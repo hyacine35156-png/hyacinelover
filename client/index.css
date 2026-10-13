@@ -1,0 +1,271 @@
+@import '@lark-apaas/client-toolkit/lib/index.css';
+@import "tw-animate-css";
+@import "./tailwind-theme.css";
+@import "./typography.css";
+
+@source "../../node_modules/streamdown/dist/*.js";
+@config "../../tailwind.config.ts";
+
+@layer base {
+  #root {
+    min-height: 100vh;
+  }
+
+  /* 壁纸背景层 */
+  .wallpaper-layer {
+    position: fixed;
+    inset: 0;
+    z-index: -20;
+    background-image: var(--wallpaper-image);
+    background-size: var(--wallpaper-size, cover);
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: var(--wallpaper-opacity, 0);
+    transition: opacity 0.4s ease;
+    pointer-events: none;
+  }
+
+  /* 壁纸模式：纯白不透明卡片 + 清晰边框，壁纸仅作底层背景装饰 */
+  :root[data-wallpaper="custom"] {
+    --background: transparent;
+    --card: hsl(0 0% 100%);
+    --card-foreground: hsl(260 30% 12%);
+    --popover: hsl(0 0% 100%);
+    --popover-foreground: hsl(260 30% 12%);
+    --border: hsl(260 20% 88%);
+    --input: hsl(260 20% 92%);
+    --muted: hsl(260 20% 96%);
+    --muted-foreground: hsl(260 15% 40%);
+    --accent: hsl(270 70% 94%);
+    --accent-foreground: hsl(265 65% 42%);
+    --secondary: hsl(260 30% 96%);
+    --secondary-foreground: hsl(260 25% 20%);
+    --foreground: hsl(260 30% 12%);
+    --sidebar: hsl(0 0% 100%);
+    --sidebar-foreground: hsl(260 30% 12%);
+    --sidebar-border: hsl(260 20% 88%);
+  }
+
+  :root[data-wallpaper="custom"] body {
+    background-color: transparent;
+  }
+
+  :root[data-wallpaper="custom"] .shadow-sm {
+    --shadow-sm: 0 2px 10px -2px hsl(260 30% 20% / 0.1);
+  }
+
+  /* 刷题界面文字样式（默认模式） */
+  .practice-stem {
+    font-weight: 600;
+    color: hsl(260 30% 12%);
+    line-height: 1.6;
+  }
+
+  .practice-option {
+    color: hsl(260 25% 18%);
+    line-height: 1.5;
+  }
+
+  .practice-analysis {
+    color: hsl(260 30% 12% / 0.9);
+    line-height: 1.6;
+  }
+
+  .practice-correct {
+    color: hsl(152 60% 40%);
+    font-weight: 500;
+  }
+
+  .practice-wrong {
+    color: hsl(0 75% 55%);
+    font-weight: 500;
+  }
+
+
+
+  /* 全局细滚动条 - 紫色主题 */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(265 85% 65% / 0.25) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: hsl(265 85% 65% / 0.25);
+    border-radius: 3px;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(265 85% 65% / 0.45);
+  }
+}
+
+/* 自定义滚动条工具类（保留兼容） */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(265 85% 65% / 0.25) transparent;
+}
+
+/* 隐藏滚动条但保留滚动功能 */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* ============================================================
+   Hyacine 深空星穹风格
+   ============================================================ */
+
+.hyacine-starry-bg {
+  background: linear-gradient(135deg, #0a0e27 0%, #1a1446 50%, #0d1535 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.hyacine-starry-bg::before,
+.hyacine-starry-bg::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.hyacine-starry-bg::before {
+  background-image:
+    radial-gradient(1px 1px at 20px 30px, rgba(255, 255, 255, 0.8), transparent),
+    radial-gradient(1px 1px at 40px 70px, rgba(255, 255, 255, 0.6), transparent),
+    radial-gradient(1.5px 1.5px at 90px 40px, rgba(0, 212, 255, 0.7), transparent),
+    radial-gradient(1px 1px at 130px 80px, rgba(255, 255, 255, 0.5), transparent),
+    radial-gradient(2px 2px at 160px 120px, rgba(255, 215, 0, 0.4), transparent),
+    radial-gradient(1px 1px at 200px 50px, rgba(255, 255, 255, 0.7), transparent),
+    radial-gradient(1.5px 1.5px at 250px 90px, rgba(0, 212, 255, 0.5), transparent),
+    radial-gradient(1px 1px at 300px 150px, rgba(255, 255, 255, 0.6), transparent),
+    radial-gradient(1px 1px at 50px 160px, rgba(255, 255, 255, 0.5), transparent),
+    radial-gradient(2px 2px at 350px 200px, rgba(255, 215, 0, 0.3), transparent);
+  background-repeat: repeat;
+  background-size: 400px 250px;
+  animation: hyacine-twinkle 4s ease-in-out infinite alternate;
+}
+
+.hyacine-starry-bg::after {
+  background-image:
+    radial-gradient(1px 1px at 80px 120px, rgba(255, 255, 255, 0.9), transparent),
+    radial-gradient(1px 1px at 180px 60px, rgba(0, 212, 255, 0.6), transparent),
+    radial-gradient(1.5px 1.5px at 280px 180px, rgba(255, 255, 255, 0.5), transparent),
+    radial-gradient(1px 1px at 380px 30px, rgba(255, 215, 0, 0.4), transparent),
+    radial-gradient(1px 1px at 100px 220px, rgba(255, 255, 255, 0.7), transparent);
+  background-repeat: repeat;
+  background-size: 500px 300px;
+  animation: hyacine-twinkle 6s ease-in-out 2s infinite alternate-reverse;
+  opacity: 0.7;
+}
+
+@keyframes hyacine-twinkle {
+  0% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.7;
+  }
+}
+
+/* 毛玻璃卡片 */
+.hyacine-glass-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow:
+    0 4px 30px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* 毛玻璃导航栏 */
+.hyacine-nav-glass {
+  background: rgba(10, 14, 39, 0.7);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+}
+
+/* 输入框 */
+.hyacine-input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  transition: all 0.2s ease;
+}
+
+.hyacine-input:focus {
+  border-color: rgba(0, 212, 255, 0.5);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* 金色渐变按钮 */
+.hyacine-btn-gold {
+  background: linear-gradient(135deg, #ffd700 0%, #ffb347 50%, #ff8c42 100%);
+  background-size: 200% 200%;
+  color: #1a1446;
+  font-weight: 600;
+  box-shadow: 0 4px 20px rgba(255, 179, 71, 0.3);
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.hyacine-btn-gold:hover {
+  background-position: 100% 100%;
+  box-shadow: 0 6px 25px rgba(255, 179, 71, 0.5);
+  transform: translateY(-1px);
+}
+
+.hyacine-btn-gold:active {
+  transform: translateY(0);
+}
+
+/* 深色滚动条（Hyacine 主题） */
+.hyacine-starry-bg * {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 212, 255, 0.3) transparent;
+}
+
+.hyacine-starry-bg *::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.hyacine-starry-bg *::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.hyacine-starry-bg *::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 212, 255, 0.3);
+  border-radius: 3px;
+}
+
+.hyacine-starry-bg *::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 212, 255, 0.5);
+}
+
+/* 选中文字颜色 - 青色高亮 */
+.hyacine-starry-bg ::selection {
+  background: rgba(0, 212, 255, 0.3);
+  color: #00d4ff;
+}
+
+.hyacine-starry-bg ::-moz-selection {
+  background: rgba(0, 212, 255, 0.3);
+  color: #00d4ff;
+}

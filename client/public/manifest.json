@@ -1,0 +1,17 @@
+{
+  "name": "hyacine小助手",
+  "short_name": "hyacine",
+  "description": "个人知识点整理，自学自测复习工具",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8f5fc",
+  "theme_color": "#8b5cf6",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
