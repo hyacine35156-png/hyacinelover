@@ -9,7 +9,20 @@ build/
 */build/
 
 # Environment files
+.env
 .env.local
+
+# 禁止再次提交 client/ 下的源码副本（只允许 index.html 与 public/）
+client/api/
+client/components/
+client/contexts/
+client/hooks/
+client/lib/
+client/pages/
+client/types/
+client/utils/
+client/*.tsx
+client/*.css
 
 # Logs
 npm-debug.log*

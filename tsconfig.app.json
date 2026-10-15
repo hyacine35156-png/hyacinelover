@@ -11,7 +11,8 @@
     "incremental": true,
   },
   "include": [
-    "client/**/*",
+    "client/src/**/*",
+    "client/index.html",
     "shared/**/*"
   ],
   "exclude": [
