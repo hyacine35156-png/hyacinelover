@@ -107,9 +107,12 @@ const QuestionNavigator = ({
 
   return (
     <div className="overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm card-hover">
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center justify-between px-5 py-3.5 text-left transition-colors hover:bg-muted/30"
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded(!expanded); } }}
+        className="flex w-full items-center justify-between px-5 py-3.5 text-left transition-colors hover:bg-muted/30 cursor-pointer"
       >
         <div className="flex items-center gap-2.5">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-primary/15 to-accent">
@@ -142,7 +145,7 @@ const QuestionNavigator = ({
             )}
           </div>
         </div>
-      </button>
+      </div>
 
       {expanded && (
         <div className="border-t border-border/60 px-5 py-5">
