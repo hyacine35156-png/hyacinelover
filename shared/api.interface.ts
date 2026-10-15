@@ -389,6 +389,7 @@ export interface PracticeAnswerProgressItem {
   questionIndex: number;
   userAnswers: number[];
   isCorrect: boolean;
+  durationSeconds?: number;
 }
 
 export interface PracticeSessionProgressResponse {
@@ -422,6 +423,7 @@ export interface SaveAnswerProgressRequest {
   userAnswers: number[];
   isCorrect: boolean;
   currentIndex: number;
+  durationSeconds?: number;
 }
 
 export interface SaveBatchProgressRequest {

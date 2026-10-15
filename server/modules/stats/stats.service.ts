@@ -93,7 +93,7 @@ export class StatsService {
       Number(dayStr),
       hour, 0, 0, 0,
     ));
-    return new Date(d.getTime() - 8 * 60 * 60 * 1000);
+    return new Date(d.getTime() + 8 * 60 * 60 * 1000);
   }
 
   private async getPeriodStats(
@@ -110,16 +110,17 @@ export class StatsService {
     const answerJoinConditions: (ReturnType<typeof eq> | ReturnType<typeof sql>)[] = [
       eq(practiceAnswer.recordId, practiceRecord.id),
       sql`${practiceRecord.practiceMode} <> 'recite'`,
-      gte(practiceRecord.startedAt, this.shanghaiDate(startDate)),
+      gte(practiceAnswer.createdAt, this.shanghaiDate(startDate)),
     ];
     if (endDate) {
-      answerJoinConditions.push(lt(practiceRecord.startedAt, this.shanghaiDate(endDate)));
+      answerJoinConditions.push(lt(practiceAnswer.createdAt, this.shanghaiDate(endDate)));
     }
 
     const answerResult = await this.db
       .select({
         answeredCount: sql<number>`COUNT(*)`,
         correctCount: sql<number>`SUM(CASE WHEN ${practiceAnswer.isCorrect} THEN 1 ELSE 0 END)`,
+        studySeconds: sql<number>`COALESCE(SUM(${practiceAnswer.durationSeconds}), 0)`,
       })
       .from(practiceAnswer)
       .innerJoin(
@@ -128,24 +129,9 @@ export class StatsService {
       )
       .where(eq(practiceAnswer.appUserId, appUserId));
 
-    const durationConditions: ReturnType<typeof and>[] = [
-      eq(practiceRecord.appUserId, appUserId),
-      sql`${practiceRecord.practiceMode} <> 'recite'`,
-      gte(practiceRecord.startedAt, this.shanghaiDate(startDate)),
-    ];
-    if (endDate) {
-      durationConditions.push(lt(practiceRecord.startedAt, this.shanghaiDate(endDate)));
-    }
-    const durationResult = await this.db
-      .select({
-        totalDuration: sql<number>`COALESCE(SUM(${practiceRecord.durationSeconds}), 0)`,
-      })
-      .from(practiceRecord)
-      .where(and(...durationConditions));
-
     const answeredCount = Number(answerResult[0]?.answeredCount || 0);
     const correctCount = Number(answerResult[0]?.correctCount || 0);
-    const studySeconds = Number(durationResult[0]?.totalDuration || 0);
+    const studySeconds = Number(answerResult[0]?.studySeconds || 0);
     const accuracyRate = answeredCount > 0 ? correctCount / answeredCount : 0;
 
     const elapsedDays = endDate
@@ -171,6 +157,7 @@ export class StatsService {
       .select({
         answeredCount: sql<number>`COUNT(*)`,
         correctCount: sql<number>`SUM(CASE WHEN ${practiceAnswer.isCorrect} THEN 1 ELSE 0 END)`,
+        studySeconds: sql<number>`COALESCE(SUM(${practiceAnswer.durationSeconds}), 0)`,
       })
       .from(practiceAnswer)
       .innerJoin(
@@ -182,27 +169,26 @@ export class StatsService {
       )
       .where(eq(practiceAnswer.appUserId, appUserId));
 
-    const durationResult = await this.db
-      .select({
-        totalDuration: sql<number>`COALESCE(SUM(${practiceRecord.durationSeconds}), 0)`,
-      })
-      .from(practiceRecord)
-      .where(and(
-        eq(practiceRecord.appUserId, appUserId),
-        sql`${practiceRecord.practiceMode} <> 'recite'`,
-      ));
-
     const row = answerResult[0];
     const answeredCount = Number(row.answeredCount || 0);
     const correctCount = Number(row.correctCount || 0);
-    const studySeconds = Number(durationResult[0]?.totalDuration || 0);
+    const studySeconds = Number(row.studySeconds || 0);
     const accuracyRate = answeredCount > 0 ? correctCount / answeredCount : 0;
 
     const daysResult = await this.db
-      .select({ count: count() })
-      .from(dailyAnswerRecord)
-      .where(eq(dailyAnswerRecord.userId, appUserId))
-      .groupBy(dailyAnswerRecord.answerDate);
+      .select({
+        dayStr: sql<string>`DATE(${practiceAnswer.createdAt} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Shanghai')`,
+      })
+      .from(practiceAnswer)
+      .innerJoin(
+        practiceRecord,
+        and(
+          eq(practiceAnswer.recordId, practiceRecord.id),
+          sql`${practiceRecord.practiceMode} <> 'recite'`,
+        ),
+      )
+      .where(eq(practiceAnswer.appUserId, appUserId))
+      .groupBy(sql`DATE(${practiceAnswer.createdAt} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Shanghai')`);
 
     return {
       answeredCount,
@@ -222,7 +208,7 @@ export class StatsService {
 
     const rows = await this.db
       .select({
-        date: sql<string>`DATE(${practiceRecord.startedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Shanghai')`,
+        date: sql<string>`DATE(${practiceAnswer.createdAt} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Shanghai')`,
         answeredCount: count(),
         correctCount: sql<number>`SUM(CASE WHEN ${practiceAnswer.isCorrect} THEN 1 ELSE 0 END)`,
       })
@@ -236,10 +222,10 @@ export class StatsService {
       )
       .where(and(
         eq(practiceAnswer.appUserId, appUserId),
-        gte(practiceRecord.startedAt, start),
+        gte(practiceAnswer.createdAt, start),
       ))
-      .groupBy(sql`DATE(${practiceRecord.startedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Shanghai')`)
-      .orderBy(sql`DATE(${practiceRecord.startedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Shanghai')`);
+      .groupBy(sql`DATE(${practiceAnswer.createdAt} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Shanghai')`)
+      .orderBy(sql`DATE(${practiceAnswer.createdAt} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Shanghai')`);
 
     const map = new Map<string, { answeredCount: number; correctCount: number }>();
     for (const row of rows) {
@@ -549,31 +535,50 @@ export class StatsService {
   }
 
   private async getDayAnsweredCount(
-    userId: string,
+    appUserId: string,
     dateStr: string,
   ): Promise<number> {
+    const start = this.shanghaiDate(dateStr);
+    const end = this.shanghaiDate(dateStr, 24);
     const result = await this.db
       .select({ count: count() })
-      .from(dailyAnswerRecord)
+      .from(practiceAnswer)
+      .innerJoin(
+        practiceRecord,
+        and(
+          eq(practiceAnswer.recordId, practiceRecord.id),
+          sql`${practiceRecord.practiceMode} <> 'recite'`,
+        ),
+      )
       .where(and(
-        eq(dailyAnswerRecord.userId, userId),
-        eq(dailyAnswerRecord.answerDate, dateStr),
+        eq(practiceAnswer.appUserId, appUserId),
+        gte(practiceAnswer.createdAt, start),
+        lt(practiceAnswer.createdAt, end),
       ));
     return Number(result[0]?.count ?? 0);
   }
 
   private async getRangeAnsweredCount(
-    userId: string,
+    appUserId: string,
     startDate: string,
     endDate: string,
   ): Promise<number> {
+    const start = this.shanghaiDate(startDate);
+    const end = this.shanghaiDate(endDate);
     const result = await this.db
       .select({ count: count() })
-      .from(dailyAnswerRecord)
+      .from(practiceAnswer)
+      .innerJoin(
+        practiceRecord,
+        and(
+          eq(practiceAnswer.recordId, practiceRecord.id),
+          sql`${practiceRecord.practiceMode} <> 'recite'`,
+        ),
+      )
       .where(and(
-        eq(dailyAnswerRecord.userId, userId),
-        gte(dailyAnswerRecord.answerDate, startDate),
-        lt(dailyAnswerRecord.answerDate, endDate),
+        eq(practiceAnswer.appUserId, appUserId),
+        gte(practiceAnswer.createdAt, start),
+        lt(practiceAnswer.createdAt, end),
       ));
     return Number(result[0]?.count ?? 0);
   }
@@ -587,14 +592,20 @@ export class StatsService {
 
     const result = await this.db
       .select({
-        totalDuration: sql<number>`COALESCE(SUM(${practiceRecord.durationSeconds}), 0)`,
+        totalDuration: sql<number>`COALESCE(SUM(${practiceAnswer.durationSeconds}), 0)`,
       })
-      .from(practiceRecord)
+      .from(practiceAnswer)
+      .innerJoin(
+        practiceRecord,
+        and(
+          eq(practiceAnswer.recordId, practiceRecord.id),
+          sql`${practiceRecord.practiceMode} <> 'recite'`,
+        ),
+      )
       .where(and(
-        eq(practiceRecord.appUserId, appUserId),
-        sql`${practiceRecord.practiceMode} <> 'recite'`,
-        gte(practiceRecord.startedAt, start),
-        lt(practiceRecord.startedAt, end),
+        eq(practiceAnswer.appUserId, appUserId),
+        gte(practiceAnswer.createdAt, start),
+        lt(practiceAnswer.createdAt, end),
       ));
 
     return Number(result[0]?.totalDuration ?? 0);
@@ -605,16 +616,24 @@ export class StatsService {
     startDate: string,
     endDate: string,
   ): Promise<number> {
+    const start = this.shanghaiDate(startDate);
+    const end = this.shanghaiDate(endDate);
     const result = await this.db
       .select({
-        totalDuration: sql<number>`COALESCE(SUM(${practiceRecord.durationSeconds}), 0)`,
+        totalDuration: sql<number>`COALESCE(SUM(${practiceAnswer.durationSeconds}), 0)`,
       })
-      .from(practiceRecord)
+      .from(practiceAnswer)
+      .innerJoin(
+        practiceRecord,
+        and(
+          eq(practiceAnswer.recordId, practiceRecord.id),
+          sql`${practiceRecord.practiceMode} <> 'recite'`,
+        ),
+      )
       .where(and(
-        eq(practiceRecord.appUserId, appUserId),
-        sql`${practiceRecord.practiceMode} <> 'recite'`,
-        gte(practiceRecord.startedAt, this.shanghaiDate(startDate)),
-        lt(practiceRecord.startedAt, this.shanghaiDate(endDate)),
+        eq(practiceAnswer.appUserId, appUserId),
+        gte(practiceAnswer.createdAt, start),
+        lt(practiceAnswer.createdAt, end),
       ));
 
     return Number(result[0]?.totalDuration ?? 0);
@@ -632,18 +651,26 @@ export class StatsService {
     startDate.setDate(today.getDate() - days + 1);
     const startStr = this.formatDate(startDate);
 
+    const start = this.shanghaiDate(startStr);
     const rows = await this.db
       .select({
-        answerDate: dailyAnswerRecord.answerDate,
+        answerDate: sql<string>`DATE(${practiceAnswer.createdAt} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Shanghai')`,
         count: count(),
       })
-      .from(dailyAnswerRecord)
+      .from(practiceAnswer)
+      .innerJoin(
+        practiceRecord,
+        and(
+          eq(practiceAnswer.recordId, practiceRecord.id),
+          sql`${practiceRecord.practiceMode} <> 'recite'`,
+        ),
+      )
       .where(and(
-        eq(dailyAnswerRecord.userId, appUserId),
-        gte(dailyAnswerRecord.answerDate, startStr),
+        eq(practiceAnswer.appUserId, appUserId),
+        gte(practiceAnswer.createdAt, start),
       ))
-      .groupBy(dailyAnswerRecord.answerDate)
-      .orderBy(dailyAnswerRecord.answerDate);
+      .groupBy(sql`DATE(${practiceAnswer.createdAt} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Shanghai')`)
+      .orderBy(sql`DATE(${practiceAnswer.createdAt} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Shanghai')`);
 
     const countMap = new Map<string, number>();
     for (const row of rows) {
@@ -666,12 +693,19 @@ export class StatsService {
     // 计算当前连续打卡天数
     const allHistory = await this.db
       .select({
-        answerDate: dailyAnswerRecord.answerDate,
+        answerDate: sql<string>`DATE(${practiceAnswer.createdAt} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Shanghai')`,
         count: count(),
       })
-      .from(dailyAnswerRecord)
-      .where(eq(dailyAnswerRecord.userId, appUserId))
-      .groupBy(dailyAnswerRecord.answerDate);
+      .from(practiceAnswer)
+      .innerJoin(
+        practiceRecord,
+        and(
+          eq(practiceAnswer.recordId, practiceRecord.id),
+          sql`${practiceRecord.practiceMode} <> 'recite'`,
+        ),
+      )
+      .where(eq(practiceAnswer.appUserId, appUserId))
+      .groupBy(sql`DATE(${practiceAnswer.createdAt} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Shanghai')`);
 
     const allCountMap = new Map<string, number>();
     for (const row of allHistory) {

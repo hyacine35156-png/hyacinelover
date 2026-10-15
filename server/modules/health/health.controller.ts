@@ -1,6 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 
-const APP_VERSION = 'v2.5.7';
+const APP_VERSION = 'v2.5.9';
 
 @Controller('api/health')
 export class HealthController {

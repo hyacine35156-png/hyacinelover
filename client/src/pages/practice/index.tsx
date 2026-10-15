@@ -188,6 +188,7 @@ const PracticePage = () => {
   const [elapsed, setElapsed] = useState(0);
   const [showResult, setShowResult] = useState(false);
   const [submittingResult, setSubmittingResult] = useState(false);
+  const [questionDurations, setQuestionDurations] = useState<number[]>([]);
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [recordId, setRecordId] = useState<string | null>(null);
@@ -377,7 +378,7 @@ const PracticePage = () => {
 
   const buildGroupedSavePayload = useCallback(() => {
     const seen = new Set<string>();
-    const payloads: { questionId: string; questionIndex: number; userAnswers: number[]; isCorrect: boolean }[] = [];
+    const payloads: { questionId: string; questionIndex: number; userAnswers: number[]; isCorrect: boolean; durationSeconds: number }[] = [];
     for (let i = 0; i < flatQuestions.length; i += 1) {
       const q = flatQuestions[i];
       if (seen.has(q.id)) continue;
@@ -404,12 +405,13 @@ const PracticePage = () => {
             if (val !== correctIdx) allCorrect = false;
           }
         }
-        payloads.push({
-          questionId: q.id,
-          questionIndex: questions.findIndex((qq) => qq.id === q.id),
-          userAnswers,
-          isCorrect: hasUnanswered ? false : allCorrect,
-        });
+         payloads.push({
+           questionId: q.id,
+           questionIndex: questions.findIndex((qq) => qq.id === q.id),
+           userAnswers,
+           isCorrect: hasUnanswered ? false : allCorrect,
+           durationSeconds: questionDurations[i] || 0,
+         });
         seen.add(q.id);
       } else {
         if (!submitted[i]) continue;
@@ -419,17 +421,18 @@ const PracticePage = () => {
         const isCorrect =
           userSorted.length === correctSorted.length &&
           userSorted.every((v, j) => v === correctSorted[j]);
-        payloads.push({
-          questionId: q.id,
-          questionIndex: questions.findIndex((qq) => qq.id === q.id),
-          userAnswers: userSorted,
-          isCorrect,
-        });
+         payloads.push({
+           questionId: q.id,
+           questionIndex: questions.findIndex((qq) => qq.id === q.id),
+           userAnswers: userSorted,
+           isCorrect,
+           durationSeconds: questionDurations[i] || 0,
+         });
         seen.add(q.id);
       }
     }
     return payloads;
-  }, [flatQuestions, questions, submitted, allAnswers]);
+   }, [flatQuestions, questions, submitted, allAnswers, questionDurations]);
 
   const saveAllProgress = useCallback(async () => {
     if (!recordId || flatQuestions.length === 0) return { success: false };
@@ -523,12 +526,7 @@ const PracticePage = () => {
   }, [bankId, isGuest, recordId, flatQuestions, currentIndex]);
 
   const scheduleSave = useCallback(() => {
-    if (saveTimerRef.current) {
-      window.clearTimeout(saveTimerRef.current);
-    }
-    saveTimerRef.current = window.setTimeout(() => {
-      saveAllProgress();
-    }, 2000);
+    saveAllProgress();
   }, [saveAllProgress]);
 
   useEffect(() => {
@@ -566,6 +564,7 @@ const PracticePage = () => {
         setFlatQuestions(flatItems);
         setAllAnswers(new Array(flatItems.length).fill(null).map(() => []));
         setSubmitted(new Array(flatItems.length).fill(false));
+        setQuestionDurations(new Array(flatItems.length).fill(0));
 
         if (!isGuest) {
           try {
@@ -812,13 +811,21 @@ const PracticePage = () => {
       toast.error('请选择答案');
       return;
     }
+    const currentDuration = questionElapsed;
+    setQuestionDurations((prev) => {
+      const next = [...prev];
+      if (next[currentIndex] === 0 || currentDuration > next[currentIndex]) {
+        next[currentIndex] = currentDuration;
+      }
+      return next;
+    });
     setSubmitted((prev) => {
       const next = [...prev];
       next[currentIndex] = true;
       return next;
     });
     if (!isGuest) {
-      scheduleSave();
+      saveAllProgress();
       if (currentQuestion) {
         checkinApi
           .recordAnswer({ questionId: currentQuestion.id })

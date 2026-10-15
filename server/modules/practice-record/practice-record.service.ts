@@ -214,12 +214,16 @@ export class PracticeRecordService {
       ));
 
     if (existing.length > 0) {
+      const updateData: Record<string, unknown> = {
+        userAnswers: dto.userAnswers as unknown as number[],
+        isCorrect: dto.isCorrect,
+      };
+      if (dto.durationSeconds !== undefined && dto.durationSeconds > 0) {
+        updateData.durationSeconds = dto.durationSeconds;
+      }
       await this.db
         .update(practiceAnswer)
-        .set({
-          userAnswers: dto.userAnswers as unknown as number[],
-          isCorrect: dto.isCorrect,
-        })
+        .set(updateData)
         .where(eq(practiceAnswer.id, existing[0].id));
     } else {
       await this.db.insert(practiceAnswer).values({
@@ -228,6 +232,7 @@ export class PracticeRecordService {
         userAnswers: dto.userAnswers as unknown as number[],
         isCorrect: dto.isCorrect,
         appUserId,
+        durationSeconds: dto.durationSeconds ?? 0,
       });
     }
 
@@ -312,6 +317,7 @@ export class PracticeRecordService {
             userAnswers: a.userAnswers as unknown as number[],
             isCorrect: a.isCorrect,
             appUserId,
+            durationSeconds: a.durationSeconds ?? 0,
           })),
         );
 
@@ -337,14 +343,16 @@ export class PracticeRecordService {
       for (const a of toUpdate) {
         const existingId = existingMap.get(a.questionId);
         if (existingId) {
-          const prevCorrect = existingAnswers.find((e) => e.questionId === a.questionId);
-          const wasWrong = prevCorrect ? false : false;
+          const updateData: Record<string, unknown> = {
+            userAnswers: a.userAnswers as unknown as number[],
+            isCorrect: a.isCorrect,
+          };
+          if (a.durationSeconds !== undefined && a.durationSeconds > 0) {
+            updateData.durationSeconds = a.durationSeconds;
+          }
           await this.db
             .update(practiceAnswer)
-            .set({
-              userAnswers: a.userAnswers as unknown as number[],
-              isCorrect: a.isCorrect,
-            })
+            .set(updateData)
             .where(eq(practiceAnswer.id, existingId));
         }
       }

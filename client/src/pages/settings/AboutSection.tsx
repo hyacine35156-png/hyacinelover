@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { APP_VERSION } from '@client/src/utils/version';
+import { APP_VERSION, APP_VERSION_NOTE } from '@client/src/utils/version';
 import { useAuth } from '@client/src/contexts/AuthContext';
 import { Keyboard, Info, ChevronDown, Megaphone, FileText, ShieldCheck, Smartphone } from 'lucide-react';
 import { UniversalLink } from '@lark-apaas/client-toolkit/components/UniversalLink';
@@ -103,6 +103,13 @@ const AboutSection = () => {
                {APP_VERSION}
              </span>
            </div>
+          <div className="border-t border-border/40" />
+          <div className="py-2">
+            <div className="mb-1 text-sm text-foreground">版本说明</div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {APP_VERSION_NOTE}
+            </p>
+          </div>
           <div className="border-t border-border/40" />
           <div className="flex items-center justify-between py-2">
             <span className="text-sm text-foreground">UID</span>
