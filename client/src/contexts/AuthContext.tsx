@@ -17,6 +17,7 @@ import {
 import type { AppUserItem } from '@shared/api.interface';
 import type { SavedAccount } from '@client/src/api/auth';
 import { safeSetItem, safeRemoveItem, safeGetItem } from '@client/src/utils/env';
+import { clearCache } from '@client/src/utils/request-cache';
 
 const GUEST_FLAG_KEY = 'app_guest_mode';
 
@@ -146,12 +147,14 @@ const AuthProvider = ({ children }: AuthProviderProps) => {
       logger.error('调用退出登录接口失败', error);
     }
     tokenStorage.clearToken();
+    clearCache();
     setUser(null);
   };
 
   const clearAuth = (): void => {
     logger.info('[Auth] 手动清除登录状态');
     tokenStorage.clearToken();
+    clearCache();
     safeRemoveItem(GUEST_FLAG_KEY);
     setUser(null);
     setIsGuest(false);
