@@ -24,6 +24,17 @@ client/utils/
 client/*.tsx
 client/*.css
 
+# 禁止提交数据库导出文件
+banks.json
+question.json
+question_bank.json
+question_bank_version.json
+question_tag.json
+subject.json
+*.db
+*.sqlite
+*.sqlite3
+
 # Logs
 npm-debug.log*
 yarn-debug.log*
