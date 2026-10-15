@@ -292,22 +292,24 @@ export class BankCollaborationService {
           })
           .where(eq(questionBankEditRequest.id, requestId));
 
-        // 检查是否已有协作者记录（schema 限制 bankId unique，所以 upsert）
+        // 检查是否已有该用户的协作者记录（按 bankId + appUserId 唯一）
         const existing = await tx
           .select({ id: questionBankCollaborator.id })
           .from(questionBankCollaborator)
-          .where(eq(questionBankCollaborator.bankId, req.bankId));
+          .where(and(
+            eq(questionBankCollaborator.bankId, req.bankId),
+            eq(questionBankCollaborator.appUserId, req.appUserId),
+          ));
 
         if (existing.length > 0) {
           await tx
             .update(questionBankCollaborator)
             .set({
               userId: req.userId,
-              appUserId: req.appUserId,
               permission: 'edit',
               joinedAt: now,
             })
-            .where(eq(questionBankCollaborator.bankId, req.bankId));
+            .where(eq(questionBankCollaborator.id, existing[0].id));
         } else {
           await tx
             .insert(questionBankCollaborator)

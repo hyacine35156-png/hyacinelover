@@ -698,7 +698,7 @@ export class PracticeRecordService {
         isCorrect: a.isCorrect,
         appUserId,
       })),
-    );
+    ).onConflictDoNothing();
 
     await this.syncWrongBook(appUserId, record.id);
 

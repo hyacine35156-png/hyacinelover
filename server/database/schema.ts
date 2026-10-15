@@ -181,8 +181,7 @@ export const questionBankRating = pgTable("question_bank_rating", {
   updatedBy: userProfile("_updated_by").default(sql`CASE
     WHEN (current_setting('app.user_id'::text, true) = ''::text) THEN NULL`),
 }, (table) => [
-  // Complex index: CREATE UNIQUE INDEX idx_qb_rating_bank_user ON question_bank_rating USING btree (bank_id, ((user_id).user_id)),
-  // Complex index: CREATE INDEX idx_qb_rating_user ON question_bank_rating USING btree (((user_id).user_id)),
+  uniqueIndex("idx_qb_rating_bank_user").on(table.bankId, table.appUserId),
   index("idx_qb_rating_app_user").on(table.appUserId),
   foreignKey({
     columns: [table.bankId],
@@ -269,8 +268,7 @@ export const questionBankCollaborator = pgTable("question_bank_collaborator", {
   updatedBy: userProfile("_updated_by").default(sql`CASE
     WHEN (current_setting('app.user_id'::text, true) = ''::text) THEN NULL`),
 }, (table) => [
-  // Complex index: CREATE UNIQUE INDEX idx_qb_collaborator_bank_user ON question_bank_collaborator USING btree (bank_id, ((user_id).user_id)),
-  // Complex index: CREATE INDEX idx_qb_collaborator_user ON question_bank_collaborator USING btree (((user_id).user_id)),
+  uniqueIndex("idx_qb_collaborator_bank_user").on(table.bankId, table.appUserId),
   index("idx_qb_collaborator_app_user").on(table.appUserId),
   foreignKey({
     columns: [table.bankId],
@@ -716,6 +714,7 @@ export const practiceAnswer = pgTable("practice_answer", {
   updatedBy: userProfile("_updated_by").default(sql`CASE
     WHEN (current_setting('app.user_id'::text, true) = ''::text) THEN NULL`),
 }, (table) => [
+  uniqueIndex("idx_practice_answer_record_question").on(table.recordId, table.questionId),
   index("idx_practice_answer_record_id").on(table.recordId),
   index("idx_practice_answer_app_user").on(table.appUserId),
   foreignKey({
