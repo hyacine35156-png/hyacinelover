@@ -7,7 +7,8 @@
  * - API 请求：完全不缓存（授权态接口禁止缓存，避免 401 缓存污染）
  */
 
-const CACHE_NAME = 'hyacine-static-v2';
+const APP_VERSION = '2.5.9';
+const CACHE_NAME = `hyacine-static-v${APP_VERSION}`;
 const STATIC_ASSETS = ['/'];
 
 // 安装：预缓存静态资源
@@ -73,11 +74,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 静态资源：Cache-First，回退网络
+  // 静态资源：Stale-While-Revalidate（先返回缓存，后台更新）
   event.respondWith(
     caches.match(request).then((cached) => {
-      if (cached) return cached;
-      return fetch(request)
+      const networkFetch = fetch(request)
         .then((response) => {
           if (response && response.status === 200) {
             const clone = response.clone();
@@ -88,6 +88,7 @@ self.addEventListener('fetch', (event) => {
           return response;
         })
         .catch(() => cached || Response.error());
+      return cached || networkFetch;
     }),
   );
 });
