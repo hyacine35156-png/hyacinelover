@@ -1,0 +1,212 @@
+{
+  "tasks": [
+    {
+      "id": 1,
+      "type": "app_init",
+      "name": "应用初始化任务",
+      "status": "completed",
+      "subtasks": [
+        "初始化布局导航文件Layout",
+        "初始化主题文件",
+        "初始化占位页面和路由",
+        "本任务以编译与日志检查为界，日志确认无错即提交；运行时核验统一由验收测试任务承担"
+      ],
+      "beginTime": 1787133333469,
+      "endTime": 1787133496159
+    },
+    {
+      "id": 2,
+      "name": "代码架构设计",
+      "type": "normal",
+      "status": "completed",
+      "subtasks": [
+        "读取 coding-guide skill 了解项目结构与编码规范",
+        "规划前端目录结构与路由配置（3个页面 + 导航 Layout）",
+        "规划服务端模块划分（question-bank、practice-record）",
+        "规划 shared 类型契约文件（题库、题目、练习记录 DTO）",
+        "创建全局导航骨架与页面路由占位，确保可运行"
+      ],
+      "requirements": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6"
+      ],
+      "write_scope": [
+        "client/**",
+        "server/**",
+        "shared/**"
+      ],
+      "read_scope": [
+        ".agent/skills/steering/nestjs-react-fullstack/coding-guide/SKILL.md"
+      ],
+      "acceptance": "三个页面路由均可访问，服务端模块注册完成，shared 类型文件存在且无编译错误",
+      "dependencies": [],
+      "beginTime": 1787133496348,
+      "endTime": 1787133693579
+    },
+    {
+      "id": 3,
+      "name": "数据库表创建与类型定义",
+      "type": "normal",
+      "status": "completed",
+      "subtasks": [
+        "读取 coding-guide skill 中数据库操作相关章节",
+        "按顺序创建 question_bank、question、practice_record、practice_answer 四张表",
+        "检查表结构与字段类型，确认关联关系正确",
+        "为题库表插入 2~3 条示例数据和若干示例题目",
+        "编写数据库模型对应的 TypeScript 类型定义"
+      ],
+      "requirements": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6"
+      ],
+      "write_scope": [
+        "server/**/schema.ts",
+        "server/**/drizzle/**",
+        "shared/**"
+      ],
+      "read_scope": [
+        ".agent/skills/steering/nestjs-react-fullstack/coding-guide/SKILL.md"
+      ],
+      "acceptance": "四张表均创建成功，示例数据可查询，类型定义与表结构一致",
+      "dependencies": [
+        2
+      ],
+      "beginTime": 1787133693773,
+      "endTime": 1787134096947
+    },
+    {
+      "id": 4,
+      "name": "题库管理模块开发（含前后端）",
+      "type": "normal",
+      "status": "completed",
+      "subtasks": [
+        "读取 coding-guide skill 确认前后端编码规范",
+        "实现服务端题库 CRUD、题目创建、文件导入接口（解析 CSV/JSON/Excel）",
+        "实现前端题库管理页面：顶部操作栏 + 题库卡片网格 + 空状态",
+        "实现文件导入弹窗与进度反馈，导入完成展示成功/失败数量",
+        "实现手动录入题目弹窗表单（题干、选项、答案、解析）",
+        "实现删除题库二次确认弹窗",
+        "前后端联调：列表加载、导入、手动录入、删除功能验证"
+      ],
+      "requirements": [
+        "1.1",
+        "1.2",
+        "1.3",
+        "1.4",
+        "2.1",
+        "2.2",
+        "2.3",
+        "2.4",
+        "3.1",
+        "3.2",
+        "3.3",
+        "3.4"
+      ],
+      "write_scope": [
+        "server/modules/question-bank/**",
+        "client/pages/banks/**",
+        "client/components/bank-import-dialog/**",
+        "client/components/question-add-dialog/**",
+        "shared/question-bank.ts"
+      ],
+      "read_scope": [
+        "shared/question-bank.ts",
+        "server/modules/question-bank/schema.ts",
+        ".agent/skills/steering/nestjs-react-fullstack/coding-guide/SKILL.md"
+      ],
+      "acceptance": "题库列表正常展示，文件导入可解析 CSV/JSON 并落库，手动录入题目可保存，删除功能带二次确认且生效",
+      "dependencies": [
+        3
+      ],
+      "beginTime": 1787134097153,
+      "endTime": 1787134818549
+    },
+    {
+      "id": 5,
+      "name": "刷题与记录模块开发（含前后端）",
+      "type": "normal",
+      "status": "completed",
+      "subtasks": [
+        "读取 coding-guide skill 确认前后端编码规范",
+        "实现服务端练习记录提交、统计概览、记录列表、记录详情接口",
+        "实现前端刷题练习页面：进度条 + 题目展示 + 选项选择 + 答案解析展开 + 上下题切换",
+        "实现刷题结果页：正确率、答题用时、返回入口",
+        "实现前端答题记录页面：数据概览卡片 + 题库正确率条形图 + 历史记录列表",
+        "实现历史记录点击展开详情（每题作答与正确答案）",
+        "前后端联调：刷题提交结果、统计查询、记录详情查看验证"
+      ],
+      "requirements": [
+        "4.1",
+        "4.2",
+        "4.3",
+        "4.4",
+        "5.1",
+        "5.2",
+        "5.3",
+        "5.4",
+        "6.1",
+        "6.2",
+        "6.3",
+        "6.4"
+      ],
+      "write_scope": [
+        "server/modules/practice-record/**",
+        "client/pages/practice/**",
+        "client/pages/records/**",
+        "client/components/practice-result/**",
+        "shared/practice-record.ts"
+      ],
+      "read_scope": [
+        "shared/practice-record.ts",
+        "server/modules/practice-record/schema.ts",
+        ".agent/skills/steering/nestjs-react-fullstack/coding-guide/SKILL.md"
+      ],
+      "acceptance": "刷题流程完整（选题→作答→查看解析→下一题→结果页），答题记录与统计数据随提交实时更新且刷新后仍存在",
+      "dependencies": [
+        4
+      ],
+      "beginTime": 1787134818738,
+      "endTime": 1787135169672
+    },
+    {
+      "id": 6,
+      "name": "验收测试",
+      "type": "normal",
+      "status": "completed",
+      "subtasks": [
+        "读取 testing-guide skill",
+        "架构与入口检查：验证三个页面路由可达、导航正常跳转",
+        "核心验收目标1：题库管理 —— 通过文件导入和手动录入两种方式均可成功创建题库并查看列表，删除带二次确认",
+        "核心验收目标2：刷题练习 —— 从题库进入刷题，逐题作答后显示对错与解析，完成后展示正确率和用时",
+        "核心验收目标3：答题记录 —— 刷题后记录出现在历史列表中，统计概览数据同步更新，可展开查看答题详情",
+        "非核心降级范围：文件格式校验的边缘 case、大文件导入性能、图表视觉细节"
+      ],
+      "requirements": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6"
+      ],
+      "write_scope": [],
+      "read_scope": [
+        ".agent/skills/testing-guide/SKILL.md"
+      ],
+      "acceptance": "三个核心验收目标均通过，应用端到端流程完整可用",
+      "dependencies": [
+        5
+      ],
+      "beginTime": 1787135169856,
+      "endTime": 1787135560412
+    }
+  ]
+}

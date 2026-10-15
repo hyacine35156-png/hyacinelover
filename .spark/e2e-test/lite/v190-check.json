@@ -1,0 +1,1 @@
+{"cases":[{"id":1,"priority":"p0","description":"打开首页(/banks)，预期页面正常加载，显示题集列表区域，无白屏无崩溃"},{"id":2,"priority":"p1","description":"打开设置页(/settings)的壁纸设置，预期仅显示自定义上传选项，不再有系统壁纸预设"},{"id":3,"priority":"p1","description":"打开系统日志页(/admin/system-logs)，预期页面加载正常，显示日志列表和筛选器"},{"id":4,"priority":"p2","description":"首页题库管理区域默认折叠状态，点击可展开"}]}

@@ -1,5 +1,5 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query, Req } from '@nestjs/common';
-import type { Request } from 'express';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, Req, Res, Logger, InternalServerErrorException } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import { NeedAppLogin } from '../auth/jwt.guard';
 
 import { PracticeRecordService } from './practice-record.service';
@@ -49,6 +49,57 @@ export class PracticeRecordController {
     const p = page ? parseInt(page, 10) : 1;
     const ps = pageSize ? parseInt(pageSize, 10) : 20;
     return this.practiceRecordService.getRecords(appUserId, p, ps);
+  }
+
+  @Get('export')
+  async exportRecords(
+    @Req() req: Request,
+    @Res() res: Response,
+    @Query('range') range?: string,
+    @Query('format') format?: string,
+    @Query('bankId') bankId?: string,
+  ): Promise<void> {
+    const logger = new Logger('PracticeRecordExport');
+    try {
+      const appUserId = req.appUser!.id;
+      const validRange = (range === 'today' || range === 'week' || range === 'all')
+        ? range
+        : 'all';
+      const validFormat = (format === 'json' || format === 'csv' || format === 'excel')
+        ? format
+        : 'json';
+      logger.log(`导出请求: userId=${appUserId} range=${validRange} format=${validFormat} bankId=${bankId || 'all'}`);
+      const result = await this.practiceRecordService.exportAnswers(
+        appUserId,
+        validRange,
+        validFormat,
+        bankId || undefined,
+      );
+      const exportResult = result as { filename: string; content: string; mimeType: string; isBase64?: boolean };
+      res.setHeader('Content-Type', exportResult.mimeType);
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${encodeURIComponent(exportResult.filename)}"`,
+      );
+      if (exportResult.isBase64) {
+        const buf = Buffer.from(exportResult.content, 'base64');
+        res.send(buf);
+      } else {
+        res.send(exportResult.content);
+      }
+      logger.log(`导出成功: ${exportResult.filename} format=${validFormat}`);
+    } catch (error) {
+      logger.error('导出失败', error instanceof Error ? error.stack : String(error));
+      const err = new InternalServerErrorException(
+        error instanceof Error ? error.message : '导出失败',
+      );
+      res.status(err.getStatus()).json({
+        error: {
+          code: (err as any).response?.error || 'INTERNAL_SERVER_ERROR',
+          message: (err as any).response?.message || '导出失败',
+        },
+      });
+    }
   }
 
   @Get(':id')
@@ -144,4 +195,5 @@ export class PracticeRecordController {
     const appUserId = req.appUser!.id;
     return this.practiceRecordService.batchDeleteRecords(appUserId, body.ids);
   }
+
 }

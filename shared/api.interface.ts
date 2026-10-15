@@ -546,6 +546,29 @@ export interface LogoutDeviceResponse {
   removedCount: number;
 }
 
+export type PracticeExportRange = 'today' | 'week' | 'all';
+
+export type PracticeExportFormat = 'json' | 'csv' | 'excel';
+
+export interface PracticeAnswerExportItem {
+  questionContent: string;
+  questionType: QuestionType;
+  options: QuestionOption[];
+  userAnswerLabels: string[];
+  correctAnswerLabels: string[];
+  isCorrect: boolean;
+  answeredAt: string;
+  bankName: string;
+  recordId: string;
+  subQuestionIndex?: number;
+  subQuestionContent?: string;
+}
+
+export interface PracticeExportResponse {
+  totalCount: number;
+  data: PracticeAnswerExportItem[];
+}
+
 // ==================== 打卡相关 ====================
 
 export interface CheckinSettingItem {

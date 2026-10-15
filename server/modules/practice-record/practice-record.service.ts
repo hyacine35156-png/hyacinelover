@@ -8,6 +8,7 @@ import {
 import { Inject } from '@nestjs/common';
 import { DRIZZLE_DATABASE, type PostgresJsDatabase } from '@lark-apaas/fullstack-nestjs-core';
 import { eq, desc, count, sql, and, gte, lt, inArray } from 'drizzle-orm';
+import * as ExcelJS from 'exceljs';
 
 import {
   practiceRecord,
@@ -35,6 +36,10 @@ import type {
   QuestionType,
   SubQuestion,
   PracticeMode,
+  QuestionOption,
+  PracticeAnswerExportItem,
+  PracticeExportFormat,
+  PracticeExportRange,
 } from '@shared/api.interface';
 
 @Injectable()
@@ -1109,6 +1114,367 @@ export class PracticeRecordService {
       .where(inArray(practiceRecord.id, recordIds));
 
     return { success: true, deletedCount: recordIds.length };
+  }
+
+  async exportAnswers(
+    appUserId: string,
+    range: PracticeExportRange,
+    format: PracticeExportFormat,
+    bankId?: string,
+  ): Promise<{ filename: string; content: string; mimeType: string }> {
+    const now = new Date();
+    let startDate: Date | null = null;
+
+    if (range === 'today') {
+      const shanghaiNow = this.getShanghaiDate(now);
+      const year = shanghaiNow.getFullYear();
+      const month = shanghaiNow.getMonth();
+      const day = shanghaiNow.getDate();
+      const shanghaiStart = new Date(year, month, day, 0, 0, 0);
+      startDate = new Date(shanghaiStart.getTime() - 8 * 60 * 60 * 1000);
+    } else if (range === 'week') {
+      const shanghaiNow = this.getShanghaiDate(now);
+      const year = shanghaiNow.getFullYear();
+      const month = shanghaiNow.getMonth();
+      const day = shanghaiNow.getDate();
+      const dayOfWeek = shanghaiNow.getDay() || 7;
+      const mondayShanghai = new Date(year, month, day - dayOfWeek + 1, 0, 0, 0);
+      startDate = new Date(mondayShanghai.getTime() - 8 * 60 * 60 * 1000);
+    }
+
+    const recordsQuery = this.db
+      .select({
+        id: practiceRecord.id,
+        bankId: practiceRecord.bankId,
+        finishedAt: practiceRecord.finishedAt,
+        bankName: questionBank.name,
+      })
+      .from(practiceRecord)
+      .leftJoin(questionBank, eq(practiceRecord.bankId, questionBank.id))
+      .where(and(
+        eq(practiceRecord.appUserId, appUserId),
+        eq(practiceRecord.status, 'finished'),
+        sql`${practiceRecord.practiceMode} <> 'recite'`,
+        ...(startDate ? [gte(practiceRecord.finishedAt, startDate)] : []),
+        ...(bankId ? [eq(practiceRecord.bankId, bankId)] : []),
+      ));
+
+    const records = await recordsQuery;
+
+    if (records.length === 0) {
+      let bankLabel = '全部题集';
+      if (bankId) {
+        const bankResult = await this.db
+          .select({ name: questionBank.name })
+          .from(questionBank)
+          .where(eq(questionBank.id, bankId))
+          .limit(1);
+        if (bankResult.length > 0 && bankResult[0].name) {
+          bankLabel = bankResult[0].name.replace(/[\\/:*?"<>|]/g, '_');
+        }
+      }
+      const emptyResult: PracticeAnswerExportItem[] = [];
+      return await this.formatExportResult(emptyResult, format, now, bankLabel);
+    }
+
+    const recordIds = records.map((r) => r.id);
+    const answers = await this.db
+      .select({
+        recordId: practiceAnswer.recordId,
+        questionId: practiceAnswer.questionId,
+        userAnswers: practiceAnswer.userAnswers,
+        isCorrect: practiceAnswer.isCorrect,
+        createdAt: practiceAnswer.createdAt,
+      })
+      .from(practiceAnswer)
+      .where(inArray(practiceAnswer.recordId, recordIds));
+
+    const questionIds = [...new Set(answers.map((a) => a.questionId))];
+    const questions = questionIds.length > 0
+      ? await this.db
+          .select({
+            id: question.id,
+            content: question.content,
+            questionType: question.questionType,
+            options: question.options,
+            correctAnswers: question.correctAnswers,
+            subQuestions: question.subQuestions,
+          })
+          .from(question)
+          .where(sql`${question.id} = ANY(ARRAY[${sql.join(questionIds.map((qid) => sql`${qid}`), sql`, `)}]::uuid[])`)
+      : [];
+
+    const questionMap = new Map(questions.map((q) => [q.id, q]));
+    const recordMap = new Map(records.map((r) => [r.id, r]));
+
+    const exportItems: PracticeAnswerExportItem[] = [];
+
+    for (const answer of answers) {
+      const q = questionMap.get(answer.questionId);
+      const rec = recordMap.get(answer.recordId);
+      if (!q) continue;
+
+      const options = (q.options as unknown as QuestionOption[]) || [];
+      const correctAnswers = (q.correctAnswers as unknown as number[]) || [];
+      const userAnswerIdxs = (answer.userAnswers as unknown as number[]) || [];
+      const subQList = (q.subQuestions as unknown as SubQuestion[]) || [];
+      const qType = q.questionType as QuestionType;
+
+      const answeredAt = answer.createdAt?.toISOString() || rec?.finishedAt?.toISOString() || '';
+      const bankName = rec?.bankName || '未知题集';
+
+      const correctLabels = correctAnswers
+        .map((idx: number) => options[idx]?.label || '')
+        .filter(Boolean);
+
+      const userLabels = userAnswerIdxs
+        .map((idx: number) => options[idx]?.label || '')
+        .filter(Boolean);
+
+      if (qType === 'b1' && subQList.length > 0) {
+        for (let i = 0; i < subQList.length; i += 1) {
+          const sq = subQList[i];
+          const sqCorrect = sq.correctAnswer || '';
+          const sqUserLabel = userLabels[i] || '';
+          const sqCorrectLabel = sqCorrect || '';
+          exportItems.push({
+            questionContent: q.content,
+            questionType: qType,
+            options,
+            userAnswerLabels: sqUserLabel ? [sqUserLabel] : [],
+            correctAnswerLabels: sqCorrectLabel ? [sqCorrectLabel] : [],
+            isCorrect: sqUserLabel.toUpperCase() === sqCorrectLabel.toUpperCase(),
+            answeredAt,
+            bankName,
+            recordId: answer.recordId,
+            subQuestionIndex: i + 1,
+            subQuestionContent: sq.content,
+          });
+        }
+      } else {
+        exportItems.push({
+          questionContent: q.content,
+          questionType: qType,
+          options,
+          userAnswerLabels: userLabels,
+          correctAnswerLabels: correctLabels,
+          isCorrect: answer.isCorrect,
+          answeredAt,
+          bankName,
+          recordId: answer.recordId,
+        });
+      }
+    }
+
+    let bankLabel = '全部题集';
+    if (bankId) {
+      const bankResult = await this.db
+        .select({ name: questionBank.name })
+        .from(questionBank)
+        .where(eq(questionBank.id, bankId))
+        .limit(1);
+      if (bankResult.length > 0 && bankResult[0].name) {
+        bankLabel = bankResult[0].name.replace(/[\\/:*?"<>|]/g, '_');
+      }
+    }
+
+    exportItems.sort((a, b) => (a.answeredAt < b.answeredAt ? 1 : -1));
+
+    return await this.formatExportResult(exportItems, format, now, bankLabel);
+  }
+
+  private async formatExportResult(
+    items: PracticeAnswerExportItem[],
+    format: PracticeExportFormat,
+    now: Date,
+    bankLabel: string,
+  ): Promise<{ filename: string; content: string; mimeType: string; isBase64?: boolean }> {
+    const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+    const prefix = bankLabel ? `${bankLabel}_` : '';
+
+    if (format === 'csv') {
+      const hasSubQuestion = items.some((item) => item.subQuestionIndex !== undefined);
+      const headers: string[] = [
+        '所属题集',
+        '题目类型',
+      ];
+      if (hasSubQuestion) {
+        headers.push('子题序号', '子题题干');
+      }
+      headers.push(
+        '题干',
+        '选项A',
+        '选项B',
+        '选项C',
+        '选项D',
+        '选项E',
+        '用户选择',
+        '正确答案',
+        '是否正确',
+        '答题时间',
+      );
+
+      const typeLabelMap: Record<string, string> = {
+        single: '单选题',
+        multiple: '多选题',
+        b1: 'B1型题',
+        judge: '判断题',
+        fill: '填空题',
+      };
+
+      const getOptionText = (opts: QuestionOption[], label: string): string => {
+        const found = opts.find((o) => o.label.toUpperCase() === label.toUpperCase());
+        return found ? found.text : '';
+      };
+
+      const rows = items.map((item) => {
+        const row: string[] = [
+          this.escapeCsvField(item.bankName),
+          typeLabelMap[item.questionType] || item.questionType,
+        ];
+        if (hasSubQuestion) {
+          row.push(
+            item.subQuestionIndex ? String(item.subQuestionIndex) : '',
+            item.subQuestionContent ? this.escapeCsvField(item.subQuestionContent) : '',
+          );
+        }
+        row.push(
+          this.escapeCsvField(item.questionContent),
+          this.escapeCsvField(getOptionText(item.options, 'A')),
+          this.escapeCsvField(getOptionText(item.options, 'B')),
+          this.escapeCsvField(getOptionText(item.options, 'C')),
+          this.escapeCsvField(getOptionText(item.options, 'D')),
+          this.escapeCsvField(getOptionText(item.options, 'E')),
+          this.escapeCsvField(item.userAnswerLabels.join(', ')),
+          this.escapeCsvField(item.correctAnswerLabels.join(', ')),
+          item.isCorrect ? '正确' : '错误',
+          item.answeredAt,
+        );
+        return row;
+      });
+
+      const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+      const bom = '\uFEFF';
+
+      return {
+        filename: `${prefix}刷题记录_${dateStr}.csv`,
+        content: bom + csvContent,
+        mimeType: 'text/csv; charset=utf-8',
+      };
+    }
+
+    if (format === 'excel') {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('刷题记录');
+
+      const hasSubQuestion = items.some((item) => item.subQuestionIndex !== undefined);
+      const columns: Array<{ header: string; key: string; width: number }> = [
+        { header: '所属题集', key: 'bankName', width: 25 },
+        { header: '题目类型', key: 'questionType', width: 12 },
+      ];
+      if (hasSubQuestion) {
+        columns.push(
+          { header: '子题序号', key: 'subQuestionIndex', width: 10 },
+          { header: '子题题干', key: 'subQuestionContent', width: 30 },
+        );
+      }
+      columns.push(
+        { header: '题干', key: 'questionContent', width: 50 },
+        { header: '选项A', key: 'optionA', width: 30 },
+        { header: '选项B', key: 'optionB', width: 30 },
+        { header: '选项C', key: 'optionC', width: 30 },
+        { header: '选项D', key: 'optionD', width: 30 },
+        { header: '选项E', key: 'optionE', width: 30 },
+        { header: '用户选择', key: 'userAnswers', width: 15 },
+        { header: '正确答案', key: 'correctAnswers', width: 15 },
+        { header: '是否正确', key: 'isCorrect', width: 10 },
+        { header: '答题时间', key: 'answeredAt', width: 22 },
+      );
+      worksheet.columns = columns;
+
+      const headerRow = worksheet.getRow(1);
+      headerRow.font = { bold: true, size: 12 };
+      headerRow.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF6366F1' },
+      };
+      headerRow.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
+      headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+      headerRow.height = 28;
+
+      const typeLabelMap: Record<string, string> = {
+        single: '单选题',
+        multiple: '多选题',
+        b1: 'B1型题',
+        judge: '判断题',
+        fill: '填空题',
+      };
+
+      const getOptionText = (opts: QuestionOption[], label: string): string => {
+        const found = opts.find((o) => o.label.toUpperCase() === label.toUpperCase());
+        return found ? found.text : '';
+      };
+
+      items.forEach((item) => {
+        const rowData: Record<string, string | number | boolean> = {
+          bankName: item.bankName,
+          questionType: typeLabelMap[item.questionType] || item.questionType,
+        };
+        if (hasSubQuestion) {
+          rowData.subQuestionIndex = item.subQuestionIndex || '';
+          rowData.subQuestionContent = item.subQuestionContent || '';
+        }
+        rowData.questionContent = item.questionContent;
+        rowData.optionA = getOptionText(item.options, 'A');
+        rowData.optionB = getOptionText(item.options, 'B');
+        rowData.optionC = getOptionText(item.options, 'C');
+        rowData.optionD = getOptionText(item.options, 'D');
+        rowData.optionE = getOptionText(item.options, 'E');
+        rowData.userAnswers = item.userAnswerLabels.join(', ');
+        rowData.correctAnswers = item.correctAnswerLabels.join(', ');
+        rowData.isCorrect = item.isCorrect ? '正确' : '错误';
+        rowData.answeredAt = item.answeredAt;
+        worksheet.addRow(rowData);
+      });
+
+      const dataRows = worksheet.getRows(2, items.length);
+      if (dataRows) {
+        dataRows.forEach((row) => {
+          row.alignment = { vertical: 'top', wrapText: true };
+          row.height = 40;
+        });
+      }
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const base64 = Buffer.from(buffer).toString('base64');
+
+      return {
+        filename: `${prefix}刷题记录_${dateStr}.xlsx`,
+        content: base64,
+        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        isBase64: true,
+      };
+    }
+
+    const jsonContent = JSON.stringify({
+      exportedAt: now.toISOString(),
+      totalCount: items.length,
+      data: items,
+    }, null, 2);
+
+    return {
+      filename: `${prefix}刷题记录_${dateStr}.json`,
+      content: jsonContent,
+      mimeType: 'application/json; charset=utf-8',
+    };
+  }
+
+  private escapeCsvField(value: string): string {
+    if (value.includes(',') || value.includes('"') || value.includes('\n') || value.includes('\r')) {
+      return `"${value.replace(/"/g, '""')}"`;
+    }
+    return value;
   }
 
   private getShanghaiDate(date: Date): Date {
