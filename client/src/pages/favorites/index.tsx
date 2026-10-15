@@ -117,7 +117,7 @@ const FavoritesPage = () => {
   }, [questions, keyword]);
 
   const visibleQuestions = useMemo(
-    () => filteredQuestions.slice(0, 10),
+    () => filteredQuestions,
     [filteredQuestions],
   );
 

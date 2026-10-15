@@ -589,7 +589,7 @@ const WrongBookPage = () => {
               ) : (
                 <>
                   <div className="space-y-3">
-                    {filteredQuestions.slice(0, 10).map((q) => (
+                    {filteredQuestions.map((q) => (
                       <Card
                         key={q.id}
                         onClick={() => handleQuestionClick(q.id)}
