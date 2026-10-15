@@ -986,7 +986,40 @@ const PracticePage = () => {
       setShowResult(true);
     } catch (error) {
       logger.error('提交结果失败', error);
-      toast.error('提交结果失败');
+      // 降级：提交失败时保存到本地 IndexedDB，联网后自动同步
+      if (!isGuest && practiceMode !== 'recite' && bankId) {
+        try {
+          const finishedAt = Date.now();
+          const durationSeconds = Math.floor((finishedAt - startedAt) / 1000);
+          const correct = correctCount;
+          const submittedCount = submitted.filter(Boolean).length;
+          const accuracyRate = submittedCount > 0 ? correct / submittedCount : 0;
+          const payloads = buildGroupedSavePayload();
+          const answers: PracticeAnswerItem[] = payloads.map((p) => ({
+            questionId: p.questionId,
+            userAnswers: p.userAnswers,
+            isCorrect: p.isCorrect,
+          }));
+          await saveOfflineRecord({
+            bankId,
+            bankName,
+            answers,
+            durationSeconds,
+            totalCount: questions.length,
+            correctCount: correct,
+            accuracyRate,
+            startedAt: new Date(startedAt).toISOString(),
+            finishedAt: new Date(finishedAt).toISOString(),
+            synced: false,
+          });
+          toast.success('提交失败，作答已保存到本地，联网后自动同步');
+        } catch (fallbackError) {
+          logger.error('降级保存也失败', fallbackError);
+          toast.error('提交结果失败，且本地保存失败');
+        }
+      } else {
+        toast.error('提交结果失败');
+      }
     } finally {
       setSubmittingResult(false);
     }
