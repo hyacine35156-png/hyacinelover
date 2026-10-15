@@ -43,6 +43,9 @@ function matchesEvent(hotkey: string, e: KeyboardEvent): boolean {
   const { keys, needsCtrlOrCmd } = parseHotkey(hotkey);
   if (needsCtrlOrCmd && !(e.ctrlKey || e.metaKey)) return false;
   if (!needsCtrlOrCmd && (e.ctrlKey || e.metaKey || e.altKey)) return false;
+  // 排除 Shift 修饰（? 键除外，因为它本身需要 Shift+/）
+  const needsShift = keys.some((k) => k === '?' || /^[A-Z]$/.test(k));
+  if (!needsShift && e.shiftKey && !keys.some((k) => k === '?')) return false;
 
   const eventKey = e.key.toLowerCase();
   if (keys.length === 0) return false;
