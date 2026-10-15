@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { Inject } from '@nestjs/common';
 import { DRIZZLE_DATABASE, type PostgresJsDatabase } from '@lark-apaas/fullstack-nestjs-core';
-import { eq, and, desc, count, sql, inArray } from 'drizzle-orm';
+import { eq, and, or, desc, count, sql, inArray } from 'drizzle-orm';
 
 import { questionTag, questionTagRel, question, questionBank, userQuestionState } from '@server/database/schema';
 import type {
@@ -218,8 +218,12 @@ export class QuestionTagService {
     const q = await this.db
       .select({ id: question.id })
       .from(question)
-      .where(eq(question.id, questionId));
-    if (q.length === 0) throw new NotFoundException('题目不存在');
+      .innerJoin(questionBank, eq(question.bankId, questionBank.id))
+      .where(and(
+        eq(question.id, questionId),
+        or(eq(questionBank.appUserId, appUserId), eq(questionBank.isPublic, true)),
+      ));
+    if (q.length === 0) throw new NotFoundException('题目不存在或无权限访问');
 
     const uniqueTagIds = Array.from(new Set(tagIds));
 
@@ -261,8 +265,12 @@ export class QuestionTagService {
     const q = await this.db
       .select({ id: question.id })
       .from(question)
-      .where(eq(question.id, questionId));
-    if (q.length === 0) throw new NotFoundException('题目不存在');
+      .innerJoin(questionBank, eq(question.bankId, questionBank.id))
+      .where(and(
+        eq(question.id, questionId),
+        or(eq(questionBank.appUserId, appUserId), eq(questionBank.isPublic, true)),
+      ));
+    if (q.length === 0) throw new NotFoundException('题目不存在或无权限访问');
 
     const t = await this.db
       .select({ id: questionTag.id })
@@ -295,8 +303,12 @@ export class QuestionTagService {
     const q = await this.db
       .select({ id: question.id })
       .from(question)
-      .where(eq(question.id, questionId));
-    if (q.length === 0) throw new NotFoundException('题目不存在');
+      .innerJoin(questionBank, eq(question.bankId, questionBank.id))
+      .where(and(
+        eq(question.id, questionId),
+        or(eq(questionBank.appUserId, appUserId), eq(questionBank.isPublic, true)),
+      ));
+    if (q.length === 0) throw new NotFoundException('题目不存在或无权限访问');
 
     const t = await this.db
       .select({ id: questionTag.id })

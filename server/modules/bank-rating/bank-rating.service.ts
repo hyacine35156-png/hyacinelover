@@ -49,6 +49,19 @@ export class BankRatingService {
       throw new BadRequestException('缺少题集ID');
     }
 
+    // 校验题库可见性：仅公开题库的评分对匿名用户可见
+    const bank = await this.db
+      .select({ id: questionBank.id, isPublic: questionBank.isPublic })
+      .from(questionBank)
+      .where(eq(questionBank.id, bankId))
+      .limit(1);
+    if (bank.length === 0) {
+      throw new NotFoundException('题集不存在');
+    }
+    if (!bank[0].isPublic) {
+      throw new ForbiddenException('私有题集的评分需登录后查看');
+    }
+
     const limit = Math.min(50, Math.max(1, pageSize));
     const offset = (page - 1) * limit;
 
@@ -120,12 +133,16 @@ export class BankRatingService {
     }
 
     const bank = await this.db
-      .select({ id: questionBank.id })
+      .select({ id: questionBank.id, isPublic: questionBank.isPublic, appUserId: questionBank.appUserId })
       .from(questionBank)
       .where(eq(questionBank.id, dto.bankId))
       .limit(1);
     if (bank.length === 0) {
       throw new NotFoundException('题集不存在');
+    }
+    // 仅允许对公开题库或自己的题库评分
+    if (!bank[0].isPublic && bank[0].appUserId !== appUserId) {
+      throw new ForbiddenException('无权对该题集评分');
     }
 
     let ratingId: string = '';

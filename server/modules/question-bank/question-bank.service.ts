@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Inject } from '@nestjs/common';
 import { DRIZZLE_DATABASE, type PostgresJsDatabase } from '@lark-apaas/fullstack-nestjs-core';
-import { eq, and, desc, asc, count, sql, inArray, max } from 'drizzle-orm';
+import { eq, and, or, desc, asc, count, sql, inArray, max } from 'drizzle-orm';
 import * as XLSX from 'xlsx';
 
 import { questionBank, question, userQuestionState, subject, appUser, practiceRecord, questionBankCollaborator, questionTag, questionTagRel, practiceAnswer, questionBankVersion } from '@server/database/schema';
@@ -1605,9 +1605,13 @@ export class QuestionBankService {
     const q = await this.db
       .select({ id: question.id })
       .from(question)
-      .where(eq(question.id, questionId));
+      .innerJoin(questionBank, eq(question.bankId, questionBank.id))
+      .where(and(
+        eq(question.id, questionId),
+        or(eq(questionBank.appUserId, appUserId), eq(questionBank.isPublic, true)),
+      ));
     if (q.length === 0) {
-      throw new NotFoundException('题目不存在');
+      throw new NotFoundException('题目不存在或无权限访问');
     }
 
     const existing = await this.db
