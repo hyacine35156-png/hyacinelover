@@ -46,8 +46,8 @@ export class PracticeRecordController {
     @Query('pageSize') pageSize?: string,
   ): Promise<PracticeRecordListResponse> {
     const appUserId = req.appUser!.id;
-    const p = page ? parseInt(page, 10) : 1;
-    const ps = pageSize ? parseInt(pageSize, 10) : 20;
+    const p = page ? Math.max(1, parseInt(page, 10) || 1) : 1;
+    const ps = pageSize ? Math.min(100, Math.max(1, parseInt(pageSize, 10) || 20)) : 20;
     return this.practiceRecordService.getRecords(appUserId, p, ps);
   }
 
