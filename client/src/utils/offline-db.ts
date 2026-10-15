@@ -632,7 +632,8 @@ export async function markRecordSynced(recordId: string): Promise<void> {
       tx.onabort = () => reject(tx.error);
     });
   } catch (err) {
-    logger.warn('[offline-db] markRecordSynced 失败', String(err));
+    logger.error('[offline-db] markRecordSynced 失败', String(err));
+    throw err;
   }
 }
 

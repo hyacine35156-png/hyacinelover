@@ -98,6 +98,7 @@ class SyncManager {
       durationSeconds: record.durationSeconds,
       startedAt: record.startedAt,
       finishedAt: record.finishedAt,
+      clientRecordId: record.id,
       answers: answers.map((a) => ({
         questionId: a.questionId,
         userAnswers: a.userAnswers,

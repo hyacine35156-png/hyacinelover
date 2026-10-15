@@ -371,6 +371,8 @@ export interface CreatePracticeRecordRequest {
   startedAt: string;
   finishedAt: string;
   answers: PracticeAnswerItem[];
+  /** 客户端生成的幂等键，用于离线同步去重 */
+  clientRecordId?: string;
 }
 
 export interface CreatePracticeRecordResponse {
