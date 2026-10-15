@@ -19,12 +19,17 @@ function generateDeviceId(userAgent: string, ip: string | undefined): string {
 import { appUser, userDevice } from '@server/database/schema';
 import type { AppUserItem, AuthResponse } from '@shared/api.interface';
 
-const JWT_SECRET = 'question-bank-app-secret-key-2024';
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-insecure-secret-change-in-production';
 const JWT_EXPIRES_IN_MS = 7 * 24 * 60 * 60 * 1000; // 7 天
-const PBKDF2_ITERATIONS = 10000;
+const PBKDF2_ITERATIONS = 600_000; // OWASP 2023 推荐
 const PBKDF2_KEY_LEN = 64;
 const PBKDF2_DIGEST = 'sha256';
 const SALT_LEN = 16;
+
+if (!process.env.JWT_SECRET) {
+  // eslint-disable-next-line no-console
+  console.warn('[auth] WARNING: JWT_SECRET 未设置，正在使用开发默认密钥，生产环境必须配置环境变量');
+}
 
 function hashPassword(password: string): string {
   const salt = crypto.randomBytes(SALT_LEN).toString('hex');
@@ -35,17 +40,20 @@ function hashPassword(password: string): string {
     PBKDF2_KEY_LEN,
     PBKDF2_DIGEST,
   ).toString('hex');
-  return `${salt}:${derivedKey}`;
+  return `${PBKDF2_ITERATIONS}:${salt}:${derivedKey}`;
 }
 
 function verifyPassword(password: string, storedHash: string): boolean {
   const parts = storedHash.split(':');
-  if (parts.length !== 2) return false;
-  const [salt, derivedKey] = parts;
+  // 兼容旧格式（无迭代次数前缀，默认10000）
+  const iterations = parts.length === 3 ? parseInt(parts[0], 10) : 10000;
+  const salt = parts.length === 3 ? parts[1] : parts[0];
+  const derivedKey = parts.length === 3 ? parts[2] : parts[1];
+  if (!salt || !derivedKey) return false;
   const inputKey = crypto.pbkdf2Sync(
     password,
     salt,
-    PBKDF2_ITERATIONS,
+    iterations,
     PBKDF2_KEY_LEN,
     PBKDF2_DIGEST,
   ).toString('hex');
@@ -199,7 +207,9 @@ export class AuthService {
       role: inserted.role ?? 'user',
       createdAt: inserted.createdAt.toISOString(),
     };
-    const token = this.generateToken(user.id, user.username, user.role);
+    // 提前计算 deviceId 用于 JWT payload
+    const regDeviceId = deviceInfo?.deviceId || generateDeviceId(deviceInfo?.userAgent ?? '', deviceInfo?.ipAddress);
+    const token = this.generateToken(user.id, user.username, user.role, regDeviceId);
 
     // 注册成功后创建设备记录，与登录行为保持一致
     // 避免新用户注册后立即访问需鉴权接口时因无设备记录被 401
@@ -210,7 +220,7 @@ export class AuthService {
         const browser = parseBrowser(userAgent);
         const os = parseOS(userAgent);
         const deviceName = deviceInfo.deviceName || `${browser} · ${os}`;
-        const deviceId = deviceInfo.deviceId || generateDeviceId(userAgent, deviceInfo.ipAddress);
+        const deviceId = regDeviceId;
         await this.db.insert(userDevice).values({
           userId: user.id,
           deviceId,
@@ -304,7 +314,9 @@ export class AuthService {
       role: row.role ?? 'user',
       createdAt: row.createdAt.toISOString(),
     };
-    const token = this.generateToken(user.id, user.username, user.role);
+    // 提前计算 deviceId 用于 JWT payload
+    const loginDeviceId = deviceInfo.deviceId || generateDeviceId(deviceInfo.userAgent ?? '', deviceInfo.ipAddress);
+    const token = this.generateToken(user.id, user.username, user.role, loginDeviceId);
 
     // 记录设备
     const tokenHash = hashToken(token);
@@ -314,7 +326,7 @@ export class AuthService {
     const deviceName = deviceInfo.deviceName || `${browser} · ${os}`;
 
     try {
-      const deviceId = deviceInfo.deviceId || generateDeviceId(userAgent, deviceInfo.ipAddress);
+      const deviceId = loginDeviceId;
       await this.db.insert(userDevice).values({
         userId: user.id,
         deviceId,
@@ -505,7 +517,7 @@ export class AuthService {
     return { success: true };
   }
 
-  private generateToken(userId: string, username: string, role?: string): string {
-    return signJwt({ sub: userId, username, role: role ?? 'user' });
+  private generateToken(userId: string, username: string, role?: string, deviceId?: string): string {
+    return signJwt({ sub: userId, username, role: role ?? 'user', ...(deviceId ? { deviceId } : {}) });
   }
 }

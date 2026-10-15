@@ -1,5 +1,11 @@
-import { MiddlewareConsumer, Module, NestMiddleware } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestMiddleware, Logger } from '@nestjs/common';
 import { verifyJwt } from './modules/auth/auth.service';
+import * as crypto from 'crypto';
+
+function generateDeviceId(userAgent: string, ip: string | undefined): string {
+  const base = `${userAgent.slice(0, 200)}|${ip || 'unknown'}`;
+  return crypto.createHash('sha256').update(base).digest('hex').slice(0, 32);
+}
 
 /**
  * 解析应用级 JWT 并确保 req.userContext.userId 不被平台中间件覆盖。
@@ -11,6 +17,8 @@ import { verifyJwt } from './modules/auth/auth.service';
  * 必须放在 PlatformModule 之前注册。
  */
 class AppJwtAuthMiddleware implements NestMiddleware {
+  private readonly logger = new Logger('AppJwtAuth');
+
   use(req: any, _res: any, next: (err?: any) => void): void {
     const authHeader = req.headers.authorization;
     if (
@@ -26,6 +34,21 @@ class AppJwtAuthMiddleware implements NestMiddleware {
           const userId = sub;
           let inner: Record<string, unknown> = req.userContext || {};
           inner.userId = userId;
+
+          // 设备软校验：JWT 中携带 deviceId 时与请求设备指纹比对
+          // 不匹配时仅记录日志，不拒绝请求（避免 iframe / 存储降级场景下误杀）
+          const tokenDeviceId = payload.deviceId;
+          if (typeof tokenDeviceId === 'string' && tokenDeviceId) {
+            const userAgent = (req.headers['user-agent'] as string) || '';
+            const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim()
+              || req.socket?.remoteAddress;
+            const requestDeviceId = generateDeviceId(userAgent, ip);
+            if (tokenDeviceId !== requestDeviceId) {
+              this.logger.warn(
+                `设备指纹不匹配 userId=${userId} tokenDevice=${tokenDeviceId.slice(0, 8)}... requestDevice=${requestDeviceId.slice(0, 8)}...`,
+              );
+            }
+          }
 
           Object.defineProperty(req, 'userContext', {
             configurable: true,
