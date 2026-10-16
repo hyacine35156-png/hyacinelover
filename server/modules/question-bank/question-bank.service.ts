@@ -5,6 +5,11 @@ import { eq, and, or, desc, asc, count, sql, inArray, max } from 'drizzle-orm';
 import * as XLSX from 'xlsx';
 
 import { questionBank, question, userQuestionState, subject, appUser, practiceRecord, questionBankCollaborator, questionTag, questionTagRel, practiceAnswer, questionBankVersion } from '@server/database/schema';
+import {
+  WRONGBOOK_MIN_ATTEMPT_COUNT,
+  WRONGBOOK_MIN_WRONG_COUNT,
+  WRONGBOOK_MAX_WRONG_RATIO,
+} from '@shared/wrongbook-thresholds';
 
 const IMPORT_MAX_QUESTIONS = 2000;
 const IMPORT_MAX_FILE_SIZE = 20 * 1024 * 1024;
@@ -1547,10 +1552,10 @@ export class QuestionBankService {
       .where(and(
         eq(userQuestionState.appUserId, appUserId),
         eq(userQuestionState.mastered, false),
-        sql`${userQuestionState.attemptCount} >= 2`,
+        sql`${userQuestionState.attemptCount} >= ${WRONGBOOK_MIN_ATTEMPT_COUNT}`,
         sql`(
-          ${userQuestionState.wrongCount} >= 2
-          OR ${userQuestionState.wrongCount}::numeric / NULLIF(${userQuestionState.attemptCount}, 0)::numeric > 0.5
+          ${userQuestionState.wrongCount} >= ${WRONGBOOK_MIN_WRONG_COUNT}
+          OR ${userQuestionState.wrongCount}::numeric / NULLIF(${userQuestionState.attemptCount}, 0)::numeric > ${WRONGBOOK_MAX_WRONG_RATIO}
         )`,
       ))
       .orderBy(desc(userQuestionState.lastWrongAt));
@@ -1581,10 +1586,10 @@ export class QuestionBankService {
       .where(and(
         eq(userQuestionState.appUserId, appUserId),
         eq(userQuestionState.mastered, false),
-        sql`${userQuestionState.attemptCount} >= 2`,
+        sql`${userQuestionState.attemptCount} >= ${WRONGBOOK_MIN_ATTEMPT_COUNT}`,
         sql`(
-          ${userQuestionState.wrongCount} >= 2
-          OR ${userQuestionState.wrongCount}::numeric / NULLIF(${userQuestionState.attemptCount}, 0)::numeric > 0.5
+          ${userQuestionState.wrongCount} >= ${WRONGBOOK_MIN_WRONG_COUNT}
+          OR ${userQuestionState.wrongCount}::numeric / NULLIF(${userQuestionState.attemptCount}, 0)::numeric > ${WRONGBOOK_MAX_WRONG_RATIO}
         )`,
       ));
     return Number(result[0]?.count || 0);

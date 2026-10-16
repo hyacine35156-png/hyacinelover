@@ -14,6 +14,7 @@ import {
   favoriteGroup,
   favoriteGroupItem,
   question,
+  questionBank,
   userQuestionState,
 } from '@server/database/schema';
 import type {
@@ -214,13 +215,24 @@ export class FavoriteGroupService {
       throw new BadRequestException('题目 ID 列表不能为空');
     }
 
-    // 验证题目存在
+    // 验证题目存在且可访问（公开题库或属于当前用户）
     const validQuestions = await this.db
-      .select({ id: question.id })
+      .select({
+        id: question.id,
+        bankAppUserId: questionBank.appUserId,
+        bankIsPublic: questionBank.isPublic,
+      })
       .from(question)
+      .leftJoin(questionBank, eq(question.bankId, questionBank.id))
       .where(inArray(question.id, uniqueIds));
     if (validQuestions.length !== uniqueIds.length) {
       throw new BadRequestException('部分题目不存在');
+    }
+    const inaccessible = validQuestions.filter(
+      (q) => q.bankAppUserId !== appUserId && !q.bankIsPublic,
+    );
+    if (inaccessible.length > 0) {
+      throw new BadRequestException('部分题目无权访问');
     }
 
     // 批量插入，冲突时忽略
@@ -292,13 +304,24 @@ export class FavoriteGroupService {
       throw new ForbiddenException('只有分组创建者可以操作');
     }
 
-    // 验证题目存在
+    // 验证题目存在且可访问（公开题库或属于当前用户）
     const validQuestions = await this.db
-      .select({ id: question.id })
+      .select({
+        id: question.id,
+        bankAppUserId: questionBank.appUserId,
+        bankIsPublic: questionBank.isPublic,
+      })
       .from(question)
+      .leftJoin(questionBank, eq(question.bankId, questionBank.id))
       .where(inArray(question.id, uniqueIds));
     if (validQuestions.length !== uniqueIds.length) {
       throw new BadRequestException('部分题目不存在');
+    }
+    const inaccessible = validQuestions.filter(
+      (q) => q.bankAppUserId !== appUserId && !q.bankIsPublic,
+    );
+    if (inaccessible.length > 0) {
+      throw new BadRequestException('部分题目无权访问');
     }
 
     await this.db.transaction(async (tx) => {

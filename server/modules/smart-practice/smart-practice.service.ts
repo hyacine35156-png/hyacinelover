@@ -14,6 +14,7 @@ import {
   questionBank,
   userSettings,
 } from '@server/database/schema';
+import { isKeyWrongQuestion } from '@shared/wrongbook-thresholds';
 import type {
   SmartRecommendResponse,
   SmartRecommendQuestion,
@@ -71,6 +72,7 @@ export class SmartPracticeService {
         content: question.content,
         questionType: question.questionType,
         wrongCount: userQuestionState.wrongCount,
+        attemptCount: userQuestionState.attemptCount,
         lastWrongAt: userQuestionState.lastWrongAt,
         mastered: userQuestionState.mastered,
       })
@@ -98,8 +100,12 @@ export class SmartPracticeService {
     for (const row of rows) {
       const reasons: SmartRecommendReason[] = [];
 
-      // 高频错题：wrong_count >= 2
-      if (row.wrongCount >= 2) {
+      // 高频错题：使用与错题本一致的判定标准
+      if (isKeyWrongQuestion({
+        mastered: Boolean(row.mastered),
+        attemptCount: row.attemptCount ?? 0,
+        wrongCount: row.wrongCount ?? 0,
+      })) {
         reasons.push('high_freq_wrong');
         highFreqCount += 1;
       }

@@ -97,15 +97,16 @@ export class QuestionController {
     return this.questionService.recordAnswerTime(appUserId, dto);
   }
 
-  @Public()
   @Get(':id/comments')
   async getComments(
+    @Req() req: Request,
     @Param('id') id: string,
     @Query('limit') limit?: string,
     @Query('cursor') cursor?: string,
   ): Promise<QuestionCommentListResponse> {
+    const appUserId = req.appUser!.id;
     const pageSize = limit ? parseInt(limit, 10) : 10;
-    return this.questionService.getComments(id, pageSize, cursor);
+    return this.questionService.getComments(appUserId, id, pageSize, cursor);
   }
 
   @Post(':id/comments')

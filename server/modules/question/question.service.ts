@@ -233,6 +233,7 @@ export class QuestionService {
   }
 
   async getComments(
+    appUserId: string,
     questionId: string,
     limit: number,
     cursor?: string,
@@ -252,26 +253,41 @@ export class QuestionService {
     if (!questionId) {
       throw new BadRequestException('题目ID不能为空');
     }
+    // 校验题目可见性：题目所属题库必须是公开的或属于当前用户
+    const questionResult = await this.db
+      .select({
+        bankId: question.bankId,
+        bankAppUserId: questionBank.appUserId,
+        bankIsPublic: questionBank.isPublic,
+      })
+      .from(question)
+      .leftJoin(questionBank, eq(question.bankId, questionBank.id))
+      .where(eq(question.id, questionId));
+    if (questionResult.length === 0) {
+      throw new NotFoundException('题目不存在');
+    }
+    const q = questionResult[0];
+    if (q.bankAppUserId !== appUserId && !q.bankIsPublic) {
+      throw new NotFoundException('题目不存在');
+    }
     const pageSize = Math.min(Math.max(limit, 1), 50);
 
     const questionHash = await this.getQuestionHash(questionId);
 
-    const hashCountResult = questionHash
+    // total与列表查询使用相同条件，不相加
+    const totalResult = questionHash
       ? await this.db
           .select({ count: count() })
           .from(questionComment)
           .where(eq(questionComment.questionHash, questionHash))
-      : null;
-    const legacyCountResult = await this.db
-      .select({ count: count() })
-      .from(questionComment)
-      .where(and(
-        eq(questionComment.questionId, questionId),
-        sql`${questionComment.questionHash} IS NULL`,
-      ));
-    const hashCount = hashCountResult ? Number(hashCountResult[0]?.count ?? 0) : 0;
-    const legacyCount = Number(legacyCountResult[0]?.count ?? 0);
-    const total = hashCount + legacyCount;
+      : await this.db
+          .select({ count: count() })
+          .from(questionComment)
+          .where(and(
+            eq(questionComment.questionId, questionId),
+            sql`${questionComment.questionHash} IS NULL`,
+          ));
+    const total = Number(totalResult[0]?.count ?? 0);
 
     const baseConditions: ReturnType<typeof eq>[] = [];
     if (questionHash) {

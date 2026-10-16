@@ -41,6 +41,7 @@ export class BankRatingService {
   ) {}
 
   async listRatings(
+    appUserId: string | undefined,
     bankId: string,
     page: number = 1,
     pageSize: number = 20,
@@ -49,17 +50,17 @@ export class BankRatingService {
       throw new BadRequestException('缺少题集ID');
     }
 
-    // 校验题库可见性：仅公开题库的评分对匿名用户可见
+    // 校验题库可见性：公开题库所有人可见，私有题库仅所有者可见
     const bank = await this.db
-      .select({ id: questionBank.id, isPublic: questionBank.isPublic })
+      .select({ id: questionBank.id, isPublic: questionBank.isPublic, appUserId: questionBank.appUserId })
       .from(questionBank)
       .where(eq(questionBank.id, bankId))
       .limit(1);
     if (bank.length === 0) {
       throw new NotFoundException('题集不存在');
     }
-    if (!bank[0].isPublic) {
-      throw new ForbiddenException('私有题集的评分需登录后查看');
+    if (!bank[0].isPublic && bank[0].appUserId !== appUserId) {
+      throw new ForbiddenException('无权查看该题集的评分');
     }
 
     const limit = Math.min(50, Math.max(1, pageSize));
@@ -106,7 +107,6 @@ export class BankRatingService {
     const items: BankRatingItem[] = rows.map((row: RatingWithUsername) => ({
       id: row.id,
       bankId: row.bankId,
-      userId: row.appUserId ?? '',
       username: row.username ?? '匿名用户',
       rating: row.rating,
       comment: row.comment ?? undefined,

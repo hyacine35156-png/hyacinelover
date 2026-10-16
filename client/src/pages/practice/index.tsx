@@ -206,6 +206,11 @@ const PracticePage = () => {
     return validModes.includes(rawMode) ? rawMode : 'basic';
   });
   const quickAutoJumpTimerRef = useRef<number | null>(null);
+  // 用ref保存practiceMode最新值，避免setPracticeMode闭包捕获过期值
+  const practiceModeRef = useRef<PracticeMode>(practiceMode);
+  useEffect(() => {
+    practiceModeRef.current = practiceMode;
+  }, [practiceMode]);
   // 离线模式
   const [isOffline, setIsOffline] = useState(false);
   const [bankName, setBankName] = useState('');
@@ -224,8 +229,9 @@ const PracticePage = () => {
   };
 
   const setPracticeMode = useCallback(async (mode: PracticeMode) => {
-    const prevMode = practiceMode;
+    const prevMode = practiceModeRef.current;
     setPracticeModeState(mode);
+    practiceModeRef.current = mode;
     safeSetItem('practice_last_mode', mode);
     setAllAnswers((prev) => {
       const next = [...prev];
@@ -255,7 +261,7 @@ const PracticePage = () => {
         toast.error('创建练习会话失败，请稍后重试');
       }
     }
-  }, [practiceMode, currentIndex, submitted, isGuest, isOffline, bankId, recordId, questions.length]);
+  }, [currentIndex, submitted, isGuest, isOffline, bankId, recordId, questions.length]);
 
   const saveTimerRef = useRef<number | null>(null);
   const [saving, setSaving] = useState(false);

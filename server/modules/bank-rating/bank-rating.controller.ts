@@ -28,14 +28,17 @@ export class BankRatingController {
   ) {}
 
   @Get(':bankId')
-  @Public()
+  @NeedAppLogin()
   async listRatings(
     @Param('bankId') bankId: string,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
+    @Req() req?: Request,
   ): Promise<BankRatingListResponse> {
     if (!bankId) throw new BadRequestException('缺少题集ID');
+    const appUserId = req?.appUser?.id;
     return this.ratingService.listRatings(
+      appUserId,
       bankId,
       page ? parseInt(page, 10) : 1,
       pageSize ? parseInt(pageSize, 10) : 20,
