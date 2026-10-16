@@ -251,7 +251,10 @@ export class CheckinService {
   }
 
   /**
-   * 计算连续打卡天数：从今天往回数，每天 answered >= target 才算连续，遇到断开停止。
+   * 计算连续打卡天数：
+   * - 今天达标：从今天开始往前数
+   * - 今天未达标：从昨天开始往前数（避免用户当天还没做题就显示0）
+   * 每天 answered >= target 才算连续，遇到断开停止。
    */
   private calcStreakDays(
     dailyCounts: Map<string, number>,
@@ -260,7 +263,13 @@ export class CheckinService {
   ): number {
     let streak = 0;
     const current = new Date(todayStr);
-    // 从今天开始往前推
+    // 检查今天是否达标
+    const todayAnswered = dailyCounts.get(this.formatDate(current)) ?? 0;
+    if (todayAnswered < target) {
+      // 今天未达标，从昨天开始计数
+      current.setDate(current.getDate() - 1);
+    }
+    // 往前推
     while (true) {
       const dateStr = this.formatDate(current);
       const answered = dailyCounts.get(dateStr) ?? 0;

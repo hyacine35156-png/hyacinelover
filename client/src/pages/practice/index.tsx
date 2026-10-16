@@ -1206,6 +1206,14 @@ const PracticePage = () => {
   const progressPercent =
     flatQuestions.length > 0 ? ((currentIndex + 1) / flatQuestions.length) * 100 : 0;
 
+  // 题目数显示：B1题型展开后小题数与原题数不同
+  const totalQuestionCount = questions.length;
+  const totalSubQuestionCount = flatQuestions.length;
+  const hasB1Questions = questions.some((q) => q.questionType === 'b1');
+  const totalCountText = hasB1Questions
+    ? `共 ${totalQuestionCount} 题（${totalSubQuestionCount} 小题）`
+    : `共 ${totalSubQuestionCount} 题`;
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -1422,8 +1430,13 @@ const PracticePage = () => {
                ))}
              </div>
            </div>
+           {practiceMode === 'recite' && (
+             <p className="mt-1 text-xs text-amber-600">
+               速记模式仅用于快速浏览，不计入统计和打卡
+             </p>
+           )}
              <p className="flex items-center gap-2 text-muted-foreground tabular-nums">
-               共 {flatQuestions.length} 题 · {typeSummary} · 已做 <span className="font-medium text-foreground">{submitted.filter(Boolean).length}</span> 题
+               {totalCountText} · {typeSummary} · 已做 <span className="font-medium text-foreground">{submitted.filter(Boolean).length}</span> 题
              </p>
          </div>
 

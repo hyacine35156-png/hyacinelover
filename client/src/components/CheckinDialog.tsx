@@ -322,7 +322,7 @@ const CheckinDialog = ({
                 />
               </div>
               <div className="text-xs text-muted-foreground tabular-nums">
-                今日已答 <span className="font-semibold text-foreground">{todayAnswered}</span> / {setting.dailyTarget} 题
+                今日已答 <span className="font-semibold text-foreground">{todayAnswered}</span> / {setting.dailyTarget} 道不同题目
               </div>
             </div>
 

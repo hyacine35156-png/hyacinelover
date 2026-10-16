@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from '@client/src/utils/router';
 import { BookOpen, X, Globe, Lock, Menu, Plus, Upload, ListChecks, CheckSquare, Square, Trash2, Eye, EyeOff, Search, GraduationCap, ChevronDown, ChevronUp } from 'lucide-react';
 import { logger } from '@lark-apaas/client-toolkit/logger';
@@ -100,6 +100,8 @@ const BanksPage = () => {
   const [downloadedBankIds, setDownloadedBankIds] = useState<Set<string>>(new Set());
   const [filterCollapsed, setFilterCollapsed] = useState(true);
   const navigate = useNavigate();
+  // 请求序号：防止快速切换筛选条件时旧请求覆盖新结果
+  const bankRequestSeqRef = useRef(0);
 
   const loadSubjects = useCallback(async () => {
     try {
@@ -127,21 +129,27 @@ const BanksPage = () => {
       logger.info('[BanksPage] 认证状态未就绪，跳过题集加载', { isGuest, isRealUser });
       return;
     }
+    const seq = ++bankRequestSeqRef.current;
     try {
       setLoading(true);
       const res = isGuest
         ? await questionBankApi.getPublicBanks()
         : await questionBankApi.getBanks({ visibility, sortBy });
+      // 竞态防护：如果序号不匹配，说明有更新的请求已发出，丢弃本次结果
+      if (seq !== bankRequestSeqRef.current) return;
       const normalBanks = res.items.filter(
         (b: QuestionBankItem) =>
           b.bankType === 'normal' && !b.isTemporary,
       );
       setAllBanks(normalBanks);
     } catch (error) {
+      if (seq !== bankRequestSeqRef.current) return;
       logger.error('加载题集失败', error);
       toast.error('加载题集失败');
     } finally {
-      setLoading(false);
+      if (seq === bankRequestSeqRef.current) {
+        setLoading(false);
+      }
     }
   }, [visibility, sortBy, isGuest, isRealUser]);
 
