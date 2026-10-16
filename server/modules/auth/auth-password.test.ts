@@ -2,7 +2,7 @@
  * 密码哈希与验证测试
  * 直接引用生产代码 auth.service.ts 中的 hashPassword 和 verifyPassword
  */
-import { hashPassword, verifyPassword } from './auth.service';
+import { hashPassword, verifyPassword, PBKDF2_ITERATIONS, PBKDF2_KEY_LEN, SALT_LEN } from './auth.service';
 import * as crypto from 'crypto';
 
 describe('auth password hashing', () => {
@@ -32,9 +32,9 @@ describe('auth password hashing', () => {
     const hash = hashPassword('test');
     const parts = hash.split(':');
     expect(parts).toHaveLength(3);
-    expect(parseInt(parts[0], 10)).toBeGreaterThan(0);
-    expect(parts[1].length).toBeGreaterThan(0);
-    expect(parts[2].length).toBeGreaterThan(0);
+    expect(parseInt(parts[0], 10)).toBe(PBKDF2_ITERATIONS);
+    expect(parts[1]).toHaveLength(SALT_LEN * 2); // hex编码
+    expect(parts[2]).toHaveLength(PBKDF2_KEY_LEN * 2);
   });
 
   it('特殊字符密码正常处理', () => {

@@ -27,10 +27,10 @@ if (isProduction && !process.env.JWT_SECRET) {
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-insecure-secret-change-in-production';
 const JWT_EXPIRES_IN_MS = 7 * 24 * 60 * 60 * 1000; // 7 天
-const PBKDF2_ITERATIONS = 600_000; // OWASP 2023 推荐
-const PBKDF2_KEY_LEN = 64;
+export const PBKDF2_ITERATIONS = 600_000; // OWASP 2023 推荐
+export const PBKDF2_KEY_LEN = 64;
 const PBKDF2_DIGEST = 'sha256';
-const SALT_LEN = 16;
+export const SALT_LEN = 16;
 
 if (!process.env.JWT_SECRET) {
   // eslint-disable-next-line no-console
