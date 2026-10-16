@@ -73,6 +73,7 @@ const mobileTabItems = [
     return (
       <div className={`relative min-h-screen ${showWallpaper ? 'bg-transparent' : 'bg-background'}`}>
         {showWallpaper && <div className="wallpaper-layer" aria-hidden="true" />}
+        <OfflineBanner />
          <Outlet />
        </div>
     );

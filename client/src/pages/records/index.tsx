@@ -58,16 +58,20 @@ const RecordsPage = () => {
   const [exportRange, setExportRange] = useState<'today' | 'week' | 'all'>('all');
   const [exportFormat, setExportFormat] = useState<'json' | 'csv' | 'excel'>('json');
   const [exportBankId, setExportBankId] = useState<string>('all');
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const PAGE_SIZE = 20;
 
   const loadData = async () => {
     try {
       setLoading(true);
       const [statsRes, recordsRes] = await Promise.all([
         practiceRecordApi.getStatistics(),
-        practiceRecordApi.getRecords(1, 20),
+        practiceRecordApi.getRecords(page, PAGE_SIZE),
       ]);
       setStatistics(statsRes);
       setRecords(recordsRes.items);
+      setTotal(recordsRes.total);
     } catch (error) {
       logger.error('加载记录失败', error);
       toast.error('加载失败');
@@ -96,7 +100,7 @@ const RecordsPage = () => {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [page]);
 
   const handleExpand = async (id: string) => {
     if (expandedId === id) {
@@ -370,6 +374,31 @@ const RecordsPage = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* 分页控件 */}
+      {total > PAGE_SIZE && (
+        <div className="mt-4 flex items-center justify-center gap-2">
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page <= 1}
+            className="rounded-lg border border-border/60 bg-card px-3 py-1.5 text-sm text-foreground/80 transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            上一页
+          </button>
+          <span className="text-sm text-muted-foreground">
+            第 {page} / {Math.ceil(total / PAGE_SIZE)} 页（共 {total} 条）
+          </span>
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.min(Math.ceil(total / PAGE_SIZE), p + 1))}
+            disabled={page >= Math.ceil(total / PAGE_SIZE)}
+            className="rounded-lg border border-border/60 bg-card px-3 py-1.5 text-sm text-foreground/80 transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            下一页
+          </button>
+        </div>
+      )}
 
       <AlertDialog
         open={deleteTargetId !== null}

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { logger } from '@lark-apaas/client-toolkit/logger';
 import { safeGetItem, safeSetItem } from '@client/src/utils/env';
+import { getQuickFlashDelay } from '@client/src/utils/practice-mode';
 import { toast } from 'sonner';
 
 import { Button } from '@client/src/components/ui/button';
@@ -867,7 +868,7 @@ const PracticePage = () => {
         }
         quickAutoJumpTimerRef.current = window.setTimeout(() => {
           goToNext();
-        }, 800);
+        }, getQuickFlashDelay());
       }
     }
   };
@@ -1125,7 +1126,7 @@ const PracticePage = () => {
       },
     },
     {
-      enabled: !loading && !showResult && !!currentQuestion,
+      enabled: !loading && !showResult && !!currentQuestion && !shortcutsOpen,
     },
   );
 

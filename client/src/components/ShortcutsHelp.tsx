@@ -22,12 +22,6 @@ interface ShortcutsHelpProps {
 }
 
 const GENERAL_SHORTCUTS: ShortcutItem[] = [
-  { keys: ['Ctrl', '1'], label: '切换到「我的题集」标签' },
-  { keys: ['Ctrl', '2'], label: '切换到「收藏」标签' },
-  { keys: ['Ctrl', '3'], label: '切换到「错题本」标签' },
-  { keys: ['Ctrl', '4'], label: '切换到「标签」标签' },
-  { keys: ['Ctrl', '5'], label: '切换到「数据统计」标签' },
-  { keys: ['Ctrl', 'K'], label: '打开搜索' },
   { keys: ['Esc'], label: '关闭弹窗 / 返回上一页' },
 ];
 
