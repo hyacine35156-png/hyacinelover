@@ -4,28 +4,29 @@ import type {
   ErrorReportRequest,
   ErrorReportResponse,
 } from '@shared/api.interface';
-import { Public } from '../auth/jwt.guard';
+import { NeedAppLogin } from '../auth/jwt.guard';
 import { MonitorService } from './monitor.service';
 
 @Controller('api/client-errors')
 export class ClientErrorController {
   private readonly logger = new Logger(ClientErrorController.name);
+  private readonly MAX_ITEMS = 50;
 
   constructor(private readonly monitorService: MonitorService) {}
 
   @Post()
-  @Public()
+  @NeedAppLogin()
   async report(
     @Body() body: ErrorReportRequest | ErrorReportRequest[],
     @Req() req: Request,
   ): Promise<ErrorReportResponse> {
-    const items = Array.isArray(body) ? body : [body];
+    const items = Array.isArray(body) ? body.slice(0, this.MAX_ITEMS) : [body];
     const userId = req.userContext?.userId;
 
-    // 补充 userId
+    // 强制使用登录用户的userId，忽略body中伪造的userId
     const enriched = items.map((item) => ({
       ...item,
-      userId: item.userId ?? userId,
+      userId,
     }));
 
     for (const item of enriched) {

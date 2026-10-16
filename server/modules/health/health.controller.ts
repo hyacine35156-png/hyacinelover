@@ -1,6 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
-
-const APP_VERSION = 'v2.5.9';
+import { APP_VERSION } from '@shared/version';
 
 @Controller('api/health')
 export class HealthController {
@@ -15,7 +14,7 @@ export class HealthController {
   @Get('version')
   async getVersion(): Promise<{ version: string; timestamp: string }> {
     return {
-      version: APP_VERSION,
+      version: `v${APP_VERSION}`,
       timestamp: new Date().toISOString(),
     };
   }

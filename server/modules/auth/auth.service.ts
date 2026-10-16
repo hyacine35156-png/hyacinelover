@@ -19,6 +19,12 @@ function generateDeviceId(userAgent: string, ip: string | undefined): string {
 import { appUser, userDevice } from '@server/database/schema';
 import type { AppUserItem, AuthResponse } from '@shared/api.interface';
 
+const isProduction = process.env.NODE_ENV === 'production';
+
+if (isProduction && !process.env.JWT_SECRET) {
+  throw new Error('[auth] FATAL: 生产环境必须配置 JWT_SECRET 环境变量，拒绝启动以防止使用默认密钥');
+}
+
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-insecure-secret-change-in-production';
 const JWT_EXPIRES_IN_MS = 7 * 24 * 60 * 60 * 1000; // 7 天
 const PBKDF2_ITERATIONS = 600_000; // OWASP 2023 推荐
@@ -28,7 +34,7 @@ const SALT_LEN = 16;
 
 if (!process.env.JWT_SECRET) {
   // eslint-disable-next-line no-console
-  console.warn('[auth] WARNING: JWT_SECRET 未设置，正在使用开发默认密钥，生产环境必须配置环境变量');
+  console.warn('[auth] WARNING: JWT_SECRET 未设置，正在使用开发默认密钥（仅开发环境允许，生产环境会拒绝启动）');
 }
 
 function hashPassword(password: string): string {

@@ -12,6 +12,11 @@ build/
 .env
 .env.local
 
+# 禁止提交源码归档/压缩包
+*.zip
+*.tar.gz
+*.rar
+
 # 禁止再次提交 client/ 下的源码副本（只允许 index.html 与 public/）
 client/api/
 client/components/

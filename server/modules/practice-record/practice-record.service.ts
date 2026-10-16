@@ -703,7 +703,7 @@ export class PracticeRecordService {
     ).onConflictDoNothing();
 
     // 同步写入打卡数据（使用 finishedAt 的日期，避免离线同步把旧记录算到今天）
-    const answerDate = new Date(dto.finishedAt).toISOString().slice(0, 10);
+    const answerDate = this.getTodayDateStr(new Date(dto.finishedAt));
     await this.db
       .insert(dailyAnswerRecord)
       .values(
@@ -1522,8 +1522,8 @@ export class PracticeRecordService {
     return new Date(utcMs + 8 * 60 * 60 * 1000);
   }
 
-  private getTodayDateStr(): string {
-    const d = this.getShanghaiDate(new Date());
+  private getTodayDateStr(date?: Date): string {
+    const d = this.getShanghaiDate(date ?? new Date());
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');

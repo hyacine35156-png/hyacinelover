@@ -6,20 +6,21 @@ import type {
   ApiPerfReportRequest,
   ApiPerfReportResponse,
 } from '@shared/api.interface';
-import { Public } from '../auth/jwt.guard';
+import { NeedAppLogin } from '../auth/jwt.guard';
 import { MonitorService } from './monitor.service';
 
 @Controller('api/client-perf')
 export class ClientPerfController {
   private readonly logger = new Logger(ClientPerfController.name);
+  private readonly MAX_ITEMS = 100;
 
   constructor(private readonly monitorService: MonitorService) {}
 
   /**
-   * Web Vitals 性能数据上报（公开接口，无需登录）
+   * Web Vitals 性能数据上报（需登录）
    */
   @Post()
-  @Public()
+  @NeedAppLogin()
   async reportWebVitals(
     @Body() body: WebVitalsReportRequest,
     @Req() req: Request,
@@ -27,7 +28,7 @@ export class ClientPerfController {
     const userId = req.userContext?.userId;
     const data = {
       ...body,
-      userId: body.userId ?? userId,
+      userId, // 强制使用登录用户的userId
     };
 
     this.logger.verbose(
@@ -40,15 +41,15 @@ export class ClientPerfController {
   }
 
   /**
-   * API 性能数据上报（批量，公开接口，无需登录）
+   * API 性能数据上报（批量，需登录）
    */
   @Post('api')
-  @Public()
+  @NeedAppLogin()
   async reportApiPerf(
     @Body() body: ApiPerfReportRequest,
     @Req() req: Request,
   ): Promise<ApiPerfReportResponse> {
-    const items = Array.isArray(body) ? body : [];
+    const items = Array.isArray(body) ? body.slice(0, this.MAX_ITEMS) : [];
     if (items.length === 0) {
       return { success: true, received: 0 };
     }
@@ -56,7 +57,7 @@ export class ClientPerfController {
     const userId = req.userContext?.userId;
     const enriched = items.map((item) => ({
       ...item,
-      userId: item.userId ?? userId,
+      userId, // 强制使用登录用户的userId
     }));
 
     // 慢请求单独 warn

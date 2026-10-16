@@ -7,7 +7,8 @@
  * - API 请求：完全不缓存（授权态接口禁止缓存，避免 401 缓存污染）
  */
 
-const APP_VERSION = '2.5.9';
+// 注意：此版本号需与 shared/version.ts 中的 APP_VERSION 保持一致
+const APP_VERSION = '2.6.1';
 const CACHE_NAME = `hyacine-static-v${APP_VERSION}`;
 const STATIC_ASSETS = ['/'];
 

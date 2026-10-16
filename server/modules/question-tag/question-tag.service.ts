@@ -356,11 +356,15 @@ export class QuestionTagService {
       .select()
       .from(questionTagRel)
       .innerJoin(question, eq(question.id, questionTagRel.questionId))
+      .innerJoin(questionBank, eq(questionBank.id, question.bankId))
       .leftJoin(
         userQuestionState,
         sql`${userQuestionState.questionId} = ${question.id} AND ${userQuestionState.appUserId} = ${appUserId}`,
       )
-      .where(eq(questionTagRel.tagId, tagId))
+      .where(and(
+        eq(questionTagRel.tagId, tagId),
+        or(eq(questionBank.appUserId, appUserId), eq(questionBank.isPublic, true)),
+      ))
       .orderBy(desc(question.createdAt));
 
     const items: QuestionWithFavorite[] = questionRows.map((row) => ({
@@ -420,7 +424,12 @@ export class QuestionTagService {
     const questionIds = await this.db
       .selectDistinct({ id: questionTagRel.questionId })
       .from(questionTagRel)
-      .where(inArray(questionTagRel.tagId, uniqueTagIds));
+      .innerJoin(question, eq(question.id, questionTagRel.questionId))
+      .innerJoin(questionBank, eq(questionBank.id, question.bankId))
+      .where(and(
+        inArray(questionTagRel.tagId, uniqueTagIds),
+        or(eq(questionBank.appUserId, appUserId), eq(questionBank.isPublic, true)),
+      ));
 
     if (questionIds.length === 0) {
       throw new BadRequestException('所选标签下没有题目');
