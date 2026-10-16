@@ -92,3 +92,6 @@ pnpm-lock.yaml
 # Agent files
 .agent/
 .npm_cache
+
+# 测试输出临时文件
+test_output.txt

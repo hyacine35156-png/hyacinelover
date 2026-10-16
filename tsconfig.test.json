@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.node.json",
+  "compilerOptions": {
+    "types": ["jest", "node"],
+    "esModuleInterop": true
+  },
+  "include": [
+    "server/**/*",
+    "shared/**/*.ts",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ]
+}
