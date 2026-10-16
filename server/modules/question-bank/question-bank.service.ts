@@ -1623,7 +1623,7 @@ export class QuestionBankService {
     if (existing.length > 0) {
       await this.db
         .update(userQuestionState)
-        .set({ mastered })
+        .set({ mastered, manuallyMastered: mastered })
         .where(eq(userQuestionState.id, existing[0].id));
     } else if (mastered) {
       await this.db.insert(userQuestionState).values({
@@ -1633,6 +1633,7 @@ export class QuestionBankService {
         isFavorited: false,
         wrongCount: 0,
         mastered: true,
+        manuallyMastered: true,
       });
     }
 

@@ -237,6 +237,7 @@ export class SmartPracticeService {
         correctStreak: userQuestionState.correctStreak,
         wrongCount: userQuestionState.wrongCount,
         mastered: userQuestionState.mastered,
+        manuallyMastered: userQuestionState.manuallyMastered,
       })
       .from(userQuestionState)
       .where(
@@ -269,7 +270,8 @@ export class SmartPracticeService {
       // 错误：streak 重置为 0，wrong_count + 1
       newStreak = 0;
       newWrongCount = (current.wrongCount ?? 0) + 1;
-      newMastered = false;
+      // 用户手动标记的掌握不被答错重置
+      newMastered = current.manuallyMastered ? true : false;
     }
 
     await this.db

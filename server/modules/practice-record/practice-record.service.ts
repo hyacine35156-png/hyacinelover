@@ -557,7 +557,9 @@ export class PracticeRecordService {
               ? sql`${userQuestionState.wrongCount} + 1`
               : userQuestionState.wrongCount,
             lastWrongAt: isWrong ? new Date() : userQuestionState.lastWrongAt,
-            mastered: isWrong ? false : userQuestionState.mastered,
+            mastered: isWrong
+              ? sql`CASE WHEN ${userQuestionState.manuallyMastered} = true THEN true ELSE false END`
+              : userQuestionState.mastered,
             attemptCount: sql`${userQuestionState.attemptCount} + 1`,
           })
           .where(eq(userQuestionState.id, e.id));

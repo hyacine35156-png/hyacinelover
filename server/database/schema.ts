@@ -671,6 +671,7 @@ export const userQuestionState = pgTable("user_question_state", {
   wrongCount: integer("wrong_count").notNull().default(0),
   lastWrongAt: customTimestamptz("last_wrong_at", { precision: 6 }),
   mastered: boolean("mastered").notNull().default(false),
+  manuallyMastered: boolean("manually_mastered").notNull().default(false),
   appUserId: uuid("app_user_id"),
   attemptCount: integer("attempt_count").notNull().default(0),
   note: text("note"),
