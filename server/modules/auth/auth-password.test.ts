@@ -1,8 +1,9 @@
 /**
  * 密码哈希与验证测试
  * 直接引用生产代码 auth.service.ts 中的 hashPassword 和 verifyPassword
+ * 断言使用独立字面量期望值，避免与生产常量同义反复（tautology）
  */
-import { hashPassword, verifyPassword, PBKDF2_ITERATIONS, PBKDF2_KEY_LEN, SALT_LEN } from './auth.service';
+import { hashPassword, verifyPassword } from './auth.service';
 import * as crypto from 'crypto';
 
 describe('auth password hashing', () => {
@@ -32,9 +33,10 @@ describe('auth password hashing', () => {
     const hash = hashPassword('test');
     const parts = hash.split(':');
     expect(parts).toHaveLength(3);
-    expect(parseInt(parts[0], 10)).toBe(PBKDF2_ITERATIONS);
-    expect(parts[1]).toHaveLength(SALT_LEN * 2); // hex编码
-    expect(parts[2]).toHaveLength(PBKDF2_KEY_LEN * 2);
+    // 使用独立字面量期望值，不引用生产常量，避免同义反复
+    expect(parseInt(parts[0], 10)).toBe(600_000); // OWASP 2023 推荐迭代次数
+    expect(parts[1]).toHaveLength(32); // 16字节salt的hex长度
+    expect(parts[2]).toHaveLength(128); // 64字节key的hex长度
   });
 
   it('特殊字符密码正常处理', () => {
