@@ -37,7 +37,7 @@ if (!process.env.JWT_SECRET) {
   console.warn('[auth] WARNING: JWT_SECRET 未设置，正在使用开发默认密钥（仅开发环境允许，生产环境会拒绝启动）');
 }
 
-function hashPassword(password: string): string {
+export function hashPassword(password: string): string {
   const salt = crypto.randomBytes(SALT_LEN).toString('hex');
   const derivedKey = crypto.pbkdf2Sync(
     password,
@@ -49,7 +49,7 @@ function hashPassword(password: string): string {
   return `${PBKDF2_ITERATIONS}:${salt}:${derivedKey}`;
 }
 
-function verifyPassword(password: string, storedHash: string): boolean {
+export function verifyPassword(password: string, storedHash: string): boolean {
   const parts = storedHash.split(':');
   // 兼容旧格式（无迭代次数前缀，默认10000）
   const iterations = parts.length === 3 ? parseInt(parts[0], 10) : 10000;
