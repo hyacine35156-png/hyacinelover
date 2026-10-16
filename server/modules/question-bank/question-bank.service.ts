@@ -1500,18 +1500,11 @@ export class QuestionBankService {
     }
 
     const state = existing[0];
-    const hasOtherState = state.isFavorited || state.mastered;
-
-    if (hasOtherState) {
-      await this.db
-        .update(userQuestionState)
-        .set({ wrongCount: 0, lastWrongAt: null })
-        .where(eq(userQuestionState.id, state.id));
-    } else {
-      await this.db
-        .delete(userQuestionState)
-        .where(eq(userQuestionState.id, state.id));
-    }
+    // 只重置错题相关字段，保留笔记/难度/错因/收藏/掌握状态
+    await this.db
+      .update(userQuestionState)
+      .set({ wrongCount: 0, lastWrongAt: null, correctStreak: 0 })
+      .where(eq(userQuestionState.id, state.id));
 
     return { success: true, removed: true };
   }

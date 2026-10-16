@@ -337,8 +337,16 @@ const PracticePage = () => {
       const userAnswers = allAnswers[idx] || [];
       if (q.questionType === 'b1') {
         if (userAnswers.length === 0 || !q.subQuestion) return false;
-        const correctIdx = q.options.findIndex((o) => o.label === q.subQuestion!.correctAnswer);
-        return userAnswers[0] === correctIdx;
+        // B1题按整组判分：所有子问题都答对才算对（与服务端保存逻辑一致）
+        const groupItems = flatQuestions.filter((f) => f.id === q.id);
+        const allSubmitted = groupItems.every((g) => submitted[flatQuestions.indexOf(g)]);
+        if (!allSubmitted) return false;
+        return groupItems.every((g) => {
+          const gIdx = flatQuestions.indexOf(g);
+          const gAns = allAnswers[gIdx] || [];
+          const correctIdx = q.options.findIndex((o) => o.label === g.subQuestion!.correctAnswer);
+          return gAns[0] === correctIdx;
+        });
       }
       const userSorted = [...userAnswers].sort();
       const correctSorted = [...q.correctAnswers].sort();

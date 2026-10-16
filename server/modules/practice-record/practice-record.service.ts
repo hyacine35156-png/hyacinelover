@@ -700,6 +700,25 @@ export class PracticeRecordService {
       })),
     ).onConflictDoNothing();
 
+    // 同步写入打卡数据（使用 finishedAt 的日期，避免离线同步把旧记录算到今天）
+    const answerDate = new Date(dto.finishedAt).toISOString().slice(0, 10);
+    await this.db
+      .insert(dailyAnswerRecord)
+      .values(
+        dto.answers.map((a) => ({
+          userId: appUserId,
+          answerDate,
+          questionId: a.questionId,
+        })),
+      )
+      .onConflictDoNothing({
+        target: [
+          dailyAnswerRecord.userId,
+          dailyAnswerRecord.answerDate,
+          dailyAnswerRecord.questionId,
+        ],
+      });
+
     await this.syncWrongBook(appUserId, record.id);
 
     return {
@@ -966,8 +985,10 @@ export class PracticeRecordService {
 
         for (const state of existingStates) {
           if (state.wrongCount <= 1) {
+            // 只重置错题字段，保留笔记/收藏/难度等其他状态
             await this.db
-              .delete(userQuestionState)
+              .update(userQuestionState)
+              .set({ wrongCount: 0, lastWrongAt: null, correctStreak: 0 })
               .where(eq(userQuestionState.id, state.id));
           } else {
             await this.db
@@ -1025,8 +1046,15 @@ export class PracticeRecordService {
 
     if (bankQuestions.length > 0) {
       const bankQids = bankQuestions.map((q) => q.id);
+      // 只重置练习相关字段，保留收藏/笔记/难度/掌握状态
       await this.db
-        .delete(userQuestionState)
+        .update(userQuestionState)
+        .set({
+          wrongCount: 0,
+          lastWrongAt: null,
+          correctStreak: 0,
+          attemptCount: 0,
+        })
         .where(and(
           eq(userQuestionState.appUserId, appUserId),
           inArray(userQuestionState.questionId, bankQids),
@@ -1099,8 +1127,10 @@ export class PracticeRecordService {
         for (const state of existingStates) {
           const decrement = qidWrongCount.get(state.questionId) ?? 0;
           if (state.wrongCount <= decrement) {
+            // 只重置错题字段，保留笔记/收藏/难度等其他状态
             await this.db
-              .delete(userQuestionState)
+              .update(userQuestionState)
+              .set({ wrongCount: 0, lastWrongAt: null, correctStreak: 0 })
               .where(eq(userQuestionState.id, state.id));
           } else {
             await this.db
